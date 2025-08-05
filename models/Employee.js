@@ -138,26 +138,32 @@ const employeeSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  resetPasswordToken: {
+    type: String
+  },
+  resetPasswordExpires: {
+    type: Date
   }
 }, {
   timestamps: true
 });
 
-// Index for better query performance
+// Indexes
 employeeSchema.index({ email: 1 });
 employeeSchema.index({ employeeId: 1 });
 employeeSchema.index({ department: 1 });
 employeeSchema.index({ status: 1 });
 
 // Virtual for full name
-employeeSchema.virtual('fullName').get(function() {
+employeeSchema.virtual('fullName').get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
-// Hash password before saving
-employeeSchema.pre('save', async function(next) {
+// Hash password before save
+employeeSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -167,17 +173,17 @@ employeeSchema.pre('save', async function(next) {
   }
 });
 
-// Method to compare password
-employeeSchema.methods.comparePassword = async function(candidatePassword) {
+// Password comparison
+employeeSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Method to get public profile (without sensitive data)
-employeeSchema.methods.getPublicProfile = function() {
+// Public profile method
+employeeSchema.methods.getPublicProfile = function () {
   const employeeObject = this.toObject();
   delete employeeObject.password;
   delete employeeObject.permissions;
   return employeeObject;
 };
 
-module.exports = mongoose.model('Employee', employeeSchema); 
+module.exports = mongoose.model('Employee', employeeSchema);

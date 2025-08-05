@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import Signup from './pages/Signup'; // ✅ Import Signup page
 import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
 import Attendance from './pages/Attendance';
@@ -23,15 +24,18 @@ function App() {
     );
   }
 
+  // Unauthenticated routes
   if (!user) {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} /> {/* ✅ Signup route added */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
   }
 
+  // Authenticated routes
   return (
     <Layout>
       <Routes>
@@ -50,4 +54,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;
