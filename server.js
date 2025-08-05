@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -39,6 +40,9 @@ app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/departments', require('./routes/departments'));
 app.use('/api/reports', require('./routes/reports'));
 
+// Add the forgot/reset password routes
+app.use('/api/password', require('./routes/passwordReset'));
+
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static('client/build'));
@@ -56,4 +60,4 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-}); 
+});
