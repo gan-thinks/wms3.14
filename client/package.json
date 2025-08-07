@@ -10,6 +10,7 @@
     "clsx": "^1.2.1",
     "crypto": "^1.0.1",
     "date-fns": "^2.30.0",
+    "dayjs": "^1.11.13",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.263.1",
     "nodemailer": "^7.0.5",

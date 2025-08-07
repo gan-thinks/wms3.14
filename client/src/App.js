@@ -12,7 +12,8 @@ import Payroll from './pages/Payroll';
 import Departments from './pages/Departments';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
-import ForgotPassword from './pages/ForgotPassword'; // ✅ Import
+import ForgotPassword from './pages/ForgotPassword';
+import Calendar from './pages/Calendar'; // Calendar page
 
 function App() {
   const { user, loading } = useAuth();
@@ -25,20 +26,17 @@ function App() {
     );
   }
 
-  // Unauthenticated routes
   if (!user) {
-  return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/forgotpassword" element={<ForgotPassword />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
-  );
-}
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgotpassword" element={<ForgotPassword />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
 
-
-  // Authenticated routes
   return (
     <Layout>
       <Routes>
@@ -51,6 +49,7 @@ function App() {
         <Route path="/departments" element={<Departments />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/calendar" element={<Calendar />} /> 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>

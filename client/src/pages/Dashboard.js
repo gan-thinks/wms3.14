@@ -3,78 +3,68 @@ import { useQuery } from 'react-query';
 import axios from 'axios';
 import {
   Users,
-  Clock,
-  Calendar,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
+  ClipboardList,
+  Briefcase,
+  CheckCircle,
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 
 const Dashboard = () => {
   const { data: dashboardData, isLoading } = useQuery('dashboard', async () => {
-    const response = await axios.get('/reports/dashboard');
-    return response.data;
-  });
-
-  const { data: attendanceStats } = useQuery('attendanceStats', async () => {
-    const response = await axios.get('/attendance/stats/overview');
+    const response = await axios.get('/api/dashboard');
     return response.data;
   });
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#f93822]"></div>
       </div>
     );
   }
 
   const stats = [
     {
-      name: 'Total Employees',
-      value: dashboardData?.employees?.total || 0,
+      name: 'Employees',
+      value: dashboardData?.employees || 0,
       icon: Users,
-      color: 'bg-blue-500',
-      change: '+12%',
-      changeType: 'increase',
+      color: 'bg-[#f93822]',
     },
     {
-      name: 'Present Today',
-      value: dashboardData?.attendance?.present || 0,
-      icon: Clock,
-      color: 'bg-green-500',
-      change: '+5%',
-      changeType: 'increase',
+      name: 'Active Projects',
+      value: dashboardData?.projects || 0,
+      icon: Briefcase,
+      color: 'bg-[#ff9f70]',
     },
     {
-      name: 'Pending Leaves',
-      value: dashboardData?.leaves?.pending || 0,
-      icon: Calendar,
-      color: 'bg-yellow-500',
-      change: '-2%',
-      changeType: 'decrease',
+      name: 'Tasks Completed',
+      value: dashboardData?.tasksCompleted || 0,
+      icon: CheckCircle,
+      color: 'bg-[#38b000]',
     },
     {
-      name: 'Total Salary',
-      value: `$${(dashboardData?.payroll?.totalSalary || 0).toLocaleString()}`,
-      icon: DollarSign,
-      color: 'bg-purple-500',
-      change: '+8%',
-      changeType: 'increase',
+      name: 'Leave Requests',
+      value: dashboardData?.leaves || 0,
+      icon: ClipboardList,
+      color: 'bg-[#facc15]',
     },
   ];
 
-  const departmentData = dashboardData?.departments?.map(dept => ({
-    name: dept.name,
-    employees: dept.count,
-  })) || [];
+  const projectData = dashboardData?.projectStatus || [];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Welcome to your workforce management dashboard</p>
+        <h1 className="text-3xl font-bold text-[#1f2937]">Dashboard</h1>
+        <p className="text-gray-500">Overview of your company's activities</p>
       </div>
 
       {/* Stats Cards */}
@@ -82,30 +72,15 @@ const Dashboard = () => {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.name} className="dashboard-card">
+            <div key={stat.name} className="bg-[#ffe4c1] rounded-xl p-4 shadow-sm hover:shadow-md transition">
               <div className="flex items-center">
-                <div className={`p-3 rounded-lg ${stat.color}`}>
+                <div className={`p-3 rounded-full ${stat.color}`}>
                   <Icon className="h-6 w-6 text-white" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">{stat.name}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-sm text-[#6b7280]">{stat.name}</p>
+                  <p className="text-2xl font-bold text-[#1f2937]">{stat.value}</p>
                 </div>
-              </div>
-              <div className="mt-4 flex items-center">
-                {stat.changeType === 'increase' ? (
-                  <TrendingUp className="h-4 w-4 text-green-500" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 text-red-500" />
-                )}
-                <span
-                  className={`ml-2 text-sm font-medium ${
-                    stat.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
-                  }`}
-                >
-                  {stat.change}
-                </span>
-                <span className="ml-2 text-sm text-gray-500">from last month</span>
               </div>
             </div>
           );
@@ -114,92 +89,51 @@ const Dashboard = () => {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Department Distribution */}
-        <div className="chart-container">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Department Distribution
-          </h3>
+        {/* Project Status Chart */}
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <h3 className="text-lg font-semibold text-[#1f2937] mb-4">Project Progress</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={departmentData}>
+            <BarChart data={projectData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
+              <XAxis dataKey="project" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="employees" fill="#3b82f6" />
+              <Bar dataKey="completion" fill="#f93822" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Attendance Overview */}
-        <div className="chart-container">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Attendance Overview
-          </h3>
-          {attendanceStats ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
-                    {attendanceStats.today?.present || 0}
-                  </div>
-                  <div className="text-sm text-gray-500">Present</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">
-                    {attendanceStats.today?.absent || 0}
-                  </div>
-                  <div className="text-sm text-gray-500">Absent</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {attendanceStats.today?.late || 0}
-                  </div>
-                  <div className="text-sm text-gray-500">Late</div>
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-semibold text-gray-900">
-                  Attendance Rate: {dashboardData?.attendance?.rate || 0}%
-                </div>
-              </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <h3 className="text-lg font-semibold text-[#1f2937] mb-4">Today’s Attendance</h3>
+          <div className="grid grid-cols-3 gap-6 text-center">
+            <div>
+              <p className="text-2xl font-bold text-[#38b000]">{dashboardData?.attendance?.present || 0}</p>
+              <p className="text-sm text-gray-500">Present</p>
             </div>
-          ) : (
-            <div className="flex items-center justify-center h-48 text-gray-500">
-              No attendance data available
+            <div>
+              <p className="text-2xl font-bold text-[#f93822]">{dashboardData?.attendance?.absent || 0}</p>
+              <p className="text-sm text-gray-500">Absent</p>
             </div>
-          )}
+            <div>
+              <p className="text-2xl font-bold text-[#facc15]">{dashboardData?.attendance?.late || 0}</p>
+              <p className="text-sm text-gray-500">Late</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="chart-container">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-              <span className="text-sm text-gray-600">New employee registered</span>
-            </div>
-            <span className="text-xs text-gray-500">2 hours ago</span>
-          </div>
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-              <span className="text-sm text-gray-600">Leave request approved</span>
-            </div>
-            <span className="text-xs text-gray-500">4 hours ago</span>
-          </div>
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></div>
-              <span className="text-sm text-gray-600">Payroll generated for March</span>
-            </div>
-            <span className="text-xs text-gray-500">1 day ago</span>
-          </div>
-        </div>
+      {/* Activity Log */}
+      <div className="bg-white p-6 rounded-xl shadow-sm">
+        <h3 className="text-lg font-semibold text-[#1f2937] mb-4">Recent Activity</h3>
+        <ul className="space-y-3 text-sm text-gray-600">
+          <li>🟢 New branding project started for Client A (2 hours ago)</li>
+          <li>🟠 Website launched for Client B (Today)</li>
+          <li>🔵 Team meeting scheduled for tomorrow</li>
+        </ul>
       </div>
     </div>
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

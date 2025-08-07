@@ -20,17 +20,17 @@ const Login = () => {
     setIsLoading(true);
     const success = await login(data.email, data.password);
     setIsLoading(false);
-    
     if (success) {
       navigate('/dashboard');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-[#fff6ed] dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-12 w-12 bg-blue-600 rounded-full flex items-center justify-center">
+        <div className="text-center">
+          {/* Placeholder logo */}
+          <div className="mx-auto h-16 w-16 bg-[#FF3C00] rounded-full flex items-center justify-center shadow-md">
             <svg
               className="h-8 w-8 text-white"
               fill="none"
@@ -45,18 +45,20 @@ const Login = () => {
               />
             </svg>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+
+          <h2 className="mt-4 text-3xl font-extrabold text-[#FF3C00] dark:text-white">
             Workforce Management System
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
             Sign in to your account
           </p>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4">
+            {/* Email */}
             <div>
-              <label htmlFor="email" className="form-label">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email Address
               </label>
               <div className="relative">
@@ -78,12 +80,13 @@ const Login = () => {
                 />
               </div>
               {errors.email && (
-                <p className="form-error">{errors.email.message}</p>
+                <p className="text-sm text-red-600 mt-1">{errors.email.message}</p>
               )}
             </div>
 
+            {/* Password */}
             <div>
-              <label htmlFor="password" className="form-label">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Password
               </label>
               <div className="relative">
@@ -116,57 +119,48 @@ const Login = () => {
                 </button>
               </div>
               {errors.password && (
-                <p className="form-error">{errors.password.message}</p>
+                <p className="text-sm text-red-600 mt-1">{errors.password.message}</p>
               )}
             </div>
           </div>
 
+          {/* Remember & Forgot */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center">
+            <label className="flex items-center">
               <input
-                id="remember-me"
-                name="remember-me"
                 type="checkbox"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-[#FF3C00] focus:ring-[#FF3C00] border-gray-300 rounded"
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Remember me
-              </label>
-            </div>
-
+              <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Remember me</span>
+            </label>
             <div className="text-sm">
-              <a href="/ForgotPassword" className="font-medium text-blue-600 hover:text-blue-500">
+              <a href="/forgotpassword" className="font-medium text-[#FF3C00] hover:underline">
                 Forgot your password?
               </a>
             </div>
           </div>
 
+          {/* Submit */}
           <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2 px-4 border border-transparent text-sm font-semibold rounded-md text-white bg-[#FF3C00] hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF3C00] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? (
-                <div className="spinner"></div>
-              ) : (
-                'Sign in'
-              )}
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <a href="/signup" className="font-medium text-blue-600 hover:text-blue-500">
-                Sign up here
-              </a>
-            </p>
-          </div>
+          <p className="text-center text-sm text-gray-600 dark:text-gray-300">
+            Don't have an account?{' '}
+            <a href="/signup" className="font-medium text-[#FF3C00] hover:underline">
+              Sign up here
+            </a>
+          </p>
         </form>
       </div>
     </div>
   );
 };
 
-export default Login; 
+export default Login;

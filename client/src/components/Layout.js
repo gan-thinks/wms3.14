@@ -1,135 +1,115 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Home,
   Users,
-  Clock,
   Calendar,
-  DollarSign,
-  Building,
-  BarChart3,
+  FolderKanban,
   User,
-  Menu,
-  X,
   LogOut,
+  Moon,
+  Sun,
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [theme, setTheme] = useState('light');
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Employees', href: '/employees', icon: Users },
-    { name: 'Attendance', href: '/attendance', icon: Clock },
-    { name: 'Leaves', href: '/leaves', icon: Calendar },
-    { name: 'Payroll', href: '/payroll', icon: DollarSign },
-    { name: 'Departments', href: '/departments', icon: Building },
-    { name: 'Reports', href: '/reports', icon: BarChart3 },
+    { name: 'Projects', href: '/projects', icon: FolderKanban },
+    { name: 'Calendar', href: '/Calendar', icon: Calendar },
   ];
 
-  const handleLogout = () => {
-    logout();
+  // Persist theme in local storage
+  useEffect(() => {
+    const saved = localStorage.getItem('theme') || 'light';
+    setTheme(saved);
+    document.documentElement.classList.toggle('dark', saved === 'dark');
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
 
+  const handleLogout = () => logout();
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex h-screen transition-colors duration-300 bg-[#fff6ed] dark:bg-gray-900 dark:text-white">
       {/* Sidebar */}
-      <div className={`sidebar ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'} md:translate-x-0`}>
-        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-700">
-          <h1 className="text-xl font-bold text-white">Workforce MS</h1>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="md:hidden text-gray-300 hover:text-white"
-          >
-            <X size={20} />
+      <div className="fixed z-30 h-full flex flex-col bg-[#FF3C00] dark:bg-gray-800 text-white group transition-all duration-300 w-16 hover:w-64">
+        {/* Logo & Theme Toggle */}
+        <div className="flex items-center justify-between px-4 h-16 border-b border-red-300 dark:border-gray-700">
+          <h1 className="font-bold text-lg hidden group-hover:block">Workforce MS</h1>
+          <button onClick={toggleTheme}>
+            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
         </div>
 
-        <nav className="mt-4">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.href;
-            
+        {/* Navigation */}
+        <nav className="flex-1 px-2 py-4 space-y-1">
+          {navigation.map(({ name, href, icon: Icon }) => {
+            const isActive = location.pathname === href;
             return (
               <Link
-                key={item.name}
-                to={item.href}
-                className={`sidebar-item ${isActive ? 'active' : ''}`}
-                onClick={() => setSidebarOpen(false)}
+                key={name}
+                to={href}
+                className={`flex items-center p-2 rounded-md text-sm font-medium transition-all
+                ${isActive ? 'bg-white text-[#FF3C00]' : 'text-white hover:bg-red-600 dark:hover:bg-gray-700'}
+                `}
               >
-                <Icon size={20} className="mr-3" />
-                {item.name}
+                <Icon className="w-5 h-5 mr-3" />
+                <span className="hidden group-hover:inline">{name}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-700">
-          <div className="flex items-center mb-4">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-              <User size={16} className="text-white" />
+        {/* Footer */}
+        <div className="border-t border-red-300 dark:border-gray-700 p-4">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-white text-[#FF3C00] dark:text-gray-900 rounded-full flex items-center justify-center">
+              <User size={16} />
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-white">
-                {user?.firstName} {user?.lastName}
-              </p>
-              <p className="text-xs text-gray-400">{user?.role}</p>
+            <div className="ml-2 hidden group-hover:block">
+              <p className="text-sm font-medium">{user?.firstName}</p>
+              <p className="text-xs">{user?.role}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center w-full px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+            className="mt-3 flex items-center text-sm text-white hover:text-gray-200"
           >
-            <LogOut size={16} className="mr-3" />
-            Logout
+            <LogOut size={16} className="mr-2" />
+            <span className="hidden group-hover:inline">Logout</span>
           </button>
         </div>
       </div>
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       {/* Main content */}
-      <div className="md:ml-64">
+      <div className="flex-1 ml-16 md:ml-16 group-hover:ml-64 transition-all duration-300">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="flex items-center justify-between h-16 px-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden text-gray-600 hover:text-gray-900"
-            >
-              <Menu size={24} />
-            </button>
-            
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                Welcome back, {user?.firstName}!
-              </div>
-              <Link
-                to="/profile"
-                className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors duration-200"
-              >
-                <User size={16} className="text-white" />
-              </Link>
-            </div>
-          </div>
+        <header className="bg-white dark:bg-gray-800 shadow-sm h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-700 dark:text-white">Welcome back, {user?.firstName}!</div>
+          <Link
+            to="/profile"
+            className="w-8 h-8 bg-[#FF3C00] rounded-full flex items-center justify-center text-white"
+          >
+            <User size={16} />
+          </Link>
         </header>
 
-        {/* Page content */}
-        <main className="p-6">
-          {children}
-        </main>
+        {/* Content */}
+        <main className="p-4 overflow-auto">{children}</main>
       </div>
     </div>
   );
 };
 
-export default Layout; 
+export default Layout;
