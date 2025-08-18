@@ -40,10 +40,14 @@ app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/departments', require('./routes/departments'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/projects', require('./routes/projects'));
-
 app.use('/api/tasks', require('./routes/Tasks'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/password', require('./routes/passwordReset'));
+
+// Health check route
+app.get('/api/ping', (req, res) => {
+  res.json({ message: 'Server is up and running!' });
+});
 
 // Serve frontend (React) for all other routes
 const clientPath = path.join(__dirname, 'client', 'public');
