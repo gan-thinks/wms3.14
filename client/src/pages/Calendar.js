@@ -24,7 +24,7 @@ const CalendarPage = () => {
     <div className="p-4 bg-white dark:bg-gray-900 rounded shadow">
       <h1 className="text-2xl font-semibold mb-4">Company Calendar</h1>
       <FullCalendar
-        plugins={[dayGridPlugin, interactionPlugin]}
+      plugins={[dayGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
         dateClick={handleDateClick}
         events={events}
