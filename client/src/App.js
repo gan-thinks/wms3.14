@@ -14,6 +14,9 @@ import Reports from './pages/Reports';
 import Profile from './pages/Profile';
 import ForgotPassword from './pages/ForgotPassword';
 import Calendar from './pages/Calendar'; // Calendar page
+import CreateProject from './pages/CreateProject';
+import Projects from './pages/Projects';
+ import ProjectDetail from './pages/ProjectDetail';
 
 function App() {
   const { user, loading } = useAuth();
@@ -50,6 +53,9 @@ function App() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/calendar" element={<Calendar />} /> 
+        <Route path="/createproject" element={<CreateProject />} />
+        <Route path="/projects" element={<Projects />} />
+        <Route path="/projects/:id" element={<ProjectDetail />} /> 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>

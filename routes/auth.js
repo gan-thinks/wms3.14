@@ -1,4 +1,4 @@
-const express = require('express');
+/*const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
@@ -291,3 +291,88 @@ router.post('/register-admin', [
   }
 });
 
+*/
+const express = require("express");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { body, validationResult } = require("express-validator");
+const Employee = require("../models/Employee");
+const { auth } = require("../middleware/auth");
+
+const router = express.Router();
+
+/**
+ * @route   POST /api/auth/signup
+ * @desc    Register a new employee
+ * @access  Public
+ */
+router.post(
+  "/signup",
+  [
+    body("firstName").notEmpty().withMessage("First name is required"),
+    body("lastName").notEmpty().withMessage("Last name is required"),
+    body("email").isEmail().withMessage("Valid email is required"),
+    body("password")
+      .isLength({ min: 6 })
+      .withMessage("Password must be at least 6 characters"),
+  ],
+  async (req, res) => {
+    console.log("➡️  POST /api/auth/signup called");
+    console.log("📦 Request body:", req.body);
+
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        console.log("❌ Validation failed:", errors.array());
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { firstName, lastName, email, password } = req.body;
+      console.log("✅ Validation passed");
+
+      const existingUser = await Employee.findOne({ email });
+      if (existingUser) {
+        console.log("⚠️ User already exists:", email);
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      console.log("🔐 Password hashed");
+
+      const newEmployee = new Employee({
+        firstName,
+        lastName,
+        email,
+        password: hashedPassword,
+      });
+
+      await newEmployee.save();
+      console.log("✅ New employee saved:", newEmployee._id);
+
+      const payload = { id: newEmployee._id, email: newEmployee.email };
+      const token = jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: "1d",
+      });
+
+      console.log("🎉 Signup successful, returning token");
+
+      res.status(201).json({
+        message: "Signup successful",
+        token,
+        employee: {
+          id: newEmployee._id,
+          firstName: newEmployee.firstName,
+          lastName: newEmployee.lastName,
+          email: newEmployee.email,
+        },
+      });
+    } catch (error) {
+      console.error("🔥 Signup error:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+
+// ... Keep the login and /me route as they are ...
+
+module.exports = router;

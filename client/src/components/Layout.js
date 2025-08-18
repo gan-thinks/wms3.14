@@ -10,6 +10,7 @@ import {
   LogOut,
   Moon,
   Sun,
+  File,
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -21,6 +22,7 @@ const Layout = ({ children }) => {
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Employees', href: '/employees', icon: Users },
     { name: 'Projects', href: '/projects', icon: FolderKanban },
+    { name: 'Create Project', href: '/createproject', icon: File},
     { name: 'Calendar', href: '/Calendar', icon: Calendar },
   ];
 

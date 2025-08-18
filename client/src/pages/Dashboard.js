@@ -1,25 +1,12 @@
 import React from 'react';
 import { useQuery } from 'react-query';
 import axios from 'axios';
-import {
-  Users,
-  ClipboardList,
-  Briefcase,
-  CheckCircle,
-} from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import { Users, ClipboardList, Briefcase, CheckCircle } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Dashboard = () => {
   const { data: dashboardData, isLoading } = useQuery('dashboard', async () => {
-    const response = await axios.get('/api/dashboard');
+    const response = await axios.get('http://localhost:5000/api/dashboard');
     return response.data;
   });
 
@@ -32,30 +19,10 @@ const Dashboard = () => {
   }
 
   const stats = [
-    {
-      name: 'Employees',
-      value: dashboardData?.employees || 0,
-      icon: Users,
-      color: 'bg-[#f93822]',
-    },
-    {
-      name: 'Active Projects',
-      value: dashboardData?.projects || 0,
-      icon: Briefcase,
-      color: 'bg-[#ff9f70]',
-    },
-    {
-      name: 'Tasks Completed',
-      value: dashboardData?.tasksCompleted || 0,
-      icon: CheckCircle,
-      color: 'bg-[#38b000]',
-    },
-    {
-      name: 'Leave Requests',
-      value: dashboardData?.leaves || 0,
-      icon: ClipboardList,
-      color: 'bg-[#facc15]',
-    },
+    { name: 'Employees', value: dashboardData?.employees || 0, icon: Users, color: 'bg-[#f93822]' },
+    { name: 'Active Projects', value: dashboardData?.projects || 0, icon: Briefcase, color: 'bg-[#ff9f70]' },
+    { name: 'Tasks Completed', value: dashboardData?.tasksCompleted || 0, icon: CheckCircle, color: 'bg-[#38b000]' },
+    { name: 'Leave Requests', value: dashboardData?.leaves || 0, icon: ClipboardList, color: 'bg-[#facc15]' },
   ];
 
   const projectData = dashboardData?.projectStatus || [];
@@ -67,7 +34,7 @@ const Dashboard = () => {
         <p className="text-gray-500">Overview of your company's activities</p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => {
           const Icon = stat.icon;
@@ -89,7 +56,6 @@ const Dashboard = () => {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Project Status Chart */}
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <h3 className="text-lg font-semibold text-[#1f2937] mb-4">Project Progress</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -103,33 +69,25 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Attendance Overview */}
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <h3 className="text-lg font-semibold text-[#1f2937] mb-4">Today’s Attendance</h3>
           <div className="grid grid-cols-3 gap-6 text-center">
-            <div>
-              <p className="text-2xl font-bold text-[#38b000]">{dashboardData?.attendance?.present || 0}</p>
-              <p className="text-sm text-gray-500">Present</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-[#f93822]">{dashboardData?.attendance?.absent || 0}</p>
-              <p className="text-sm text-gray-500">Absent</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-[#facc15]">{dashboardData?.attendance?.late || 0}</p>
-              <p className="text-sm text-gray-500">Late</p>
-            </div>
+            <div><p className="text-2xl font-bold text-[#38b000]">{dashboardData?.attendance?.present}</p><p className="text-sm text-gray-500">Present</p></div>
+            <div><p className="text-2xl font-bold text-[#f93822]">{dashboardData?.attendance?.absent}</p><p className="text-sm text-gray-500">Absent</p></div>
+            <div><p className="text-2xl font-bold text-[#facc15]">{dashboardData?.attendance?.late}</p><p className="text-sm text-gray-500">Late</p></div>
           </div>
         </div>
       </div>
 
-      {/* Activity Log */}
+      {/* Recent Updates */}
       <div className="bg-white p-6 rounded-xl shadow-sm">
-        <h3 className="text-lg font-semibold text-[#1f2937] mb-4">Recent Activity</h3>
+        <h3 className="text-lg font-semibold text-[#1f2937] mb-4">Recent Project Updates</h3>
         <ul className="space-y-3 text-sm text-gray-600">
-          <li>🟢 New branding project started for Client A (2 hours ago)</li>
-          <li>🟠 Website launched for Client B (Today)</li>
-          <li>🔵 Team meeting scheduled for tomorrow</li>
+          {dashboardData?.latestUpdates?.map((u, i) => (
+            <li key={i}>
+              🟢 <strong>{u.name}</strong> - {u.status} <span className="text-gray-500">({new Date(u.lastActivity).toLocaleString()})</span>
+            </li>
+          ))}
         </ul>
       </div>
     </div>

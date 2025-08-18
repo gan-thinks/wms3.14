@@ -60,4 +60,8 @@ const checkPermission = (permission) => {
   };
 };
 
-module.exports = { auth, authorize, checkPermission };
+module.exports = {
+  auth,
+  authorize,
+  checkPermission
+};

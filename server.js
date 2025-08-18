@@ -31,7 +31,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/workforce
 .then(() => console.log('Connected to MongoDB'))
 .catch(err => console.error('MongoDB connection error:', err));
 
-// Routes
+// API Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/employees', require('./routes/employees'));
 app.use('/api/attendance', require('./routes/attendance'));
@@ -39,17 +39,24 @@ app.use('/api/payroll', require('./routes/payroll'));
 app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/departments', require('./routes/departments'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/projects', require('./routes/projects'));
 
-// Add the forgot/reset password routes
+app.use('/api/tasks', require('./routes/Tasks'));
+app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/password', require('./routes/passwordReset'));
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static('client/build'));
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, 'client', 'build', 'index.html'));
-  });
-}
+// Serve frontend (React) for all other routes
+const clientPath = path.join(__dirname, 'client', 'public');
+app.use(express.static(clientPath));
+
+app.get('*', (req, res) => {
+  // If request does not start with /api, serve React app
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(clientPath, 'index.html'));
+  } else {
+    res.status(404).json({ message: 'API route not found' });
+  }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
