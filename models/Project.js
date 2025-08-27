@@ -78,6 +78,29 @@ const projectSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    status: {
+      type: String,
+      enum: ['Not Started', 'In Progress', 'Completed', 'On Hold'],
+      default: 'Not Started'
+    },
+    priority: {
+      type: String,
+      enum: ['Low', 'Medium', 'High', 'Critical'],
+      default: 'Medium'
+    },
+    startDate: {
+      type: Date,
+      default: Date.now
+    },
+    endDate: {
+      type: Date
+    },
+    progress: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Employee',
