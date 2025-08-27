@@ -1,83 +1,73 @@
-const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const { body, validationResult } = require("express-validator");
-const Employee = require("../models/Employee");
-
+const express = require('express');
 const router = express.Router();
+const Employee = require('../models/Employee');
+const jwt = require('jsonwebtoken');
+const { auth } = require('../middleware/auth');
 
-// @route   POST /api/auth/signup
-router.post(
-  "/signup",
-  [
-    body("firstName").notEmpty(),
-    body("lastName").notEmpty(),
-    body("email").isEmail(),
-    body("password").isLength({ min: 6 }),
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty())
-      return res.status(400).json({ errors: errors.array() });
-
+// ✅ Register new employee (used by your Signup form)
+router.post('/register', async (req, res) => {
+  try {
     const { firstName, lastName, email, password, role } = req.body;
 
-    try {
-      let user = await Employee.findOne({ email });
-      if (user)
-        return res.status(400).json({ message: "User already exists" });
-
-      user = new Employee({
-        firstName,
-        lastName,
-        email,
-        password,
-        role: role || "employee",
-      });
-
-      await user.save();
-
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "1d",
-      });
-
-      res.status(201).json({ token, user: user.getPublicProfile() });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Signup failed" });
+    // Check if user already exists
+    const existingEmployee = await Employee.findOne({ email });
+    if (existingEmployee) {
+      return res.status(400).json({ error: 'Employee already exists' });
     }
-  }
-);
 
-// @route   POST /api/auth/login
-router.post(
-  "/login",
-  [
-    body("email").isEmail(),
-    body("password").exists(),
-  ],
-  async (req, res) => {
+    // Create new employee
+    const newEmployee = new Employee({
+      firstName,
+      lastName,
+      email,
+      password,
+      role,
+    });
+
+    await newEmployee.save();
+    res.status(201).json({ message: 'Employee registered successfully' });
+  } catch (err) {
+    console.error('Signup error:', err.message);
+    res.status(500).json({ error: 'Server error during registration' });
+  }
+});
+
+// ✅ Login route (leave this unchanged)
+router.post('/login', async (req, res) => {
+  try {
     const { email, password } = req.body;
 
-    try {
-      const user = await Employee.findOne({ email });
-      if (!user)
-        return res.status(400).json({ message: "Invalid credentials" });
-
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch)
-        return res.status(400).json({ message: "Invalid credentials" });
-
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "1d",
-      });
-
-      res.json({ token, user: user.getPublicProfile() });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Login failed" });
+    const employee = await Employee.findOne({ email });
+    if (!employee) {
+      return res.status(400).json({ error: 'Invalid credentials' });
     }
+
+    const isMatch = await employee.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign(
+      { id: employee._id, role: employee.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.json({ token, employee });
+  } catch (err) {
+    console.error('Login error:', err.message);
+    res.status(500).json({ error: 'Server error during login' });
   }
-);
+});
+
+// ✅ Get all employees (for assignment, etc.)
+router.get('/', auth, async (req, res) => {
+  try {
+    const employees = await Employee.find({}, '_id firstName lastName email');
+    res.json(employees);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;
