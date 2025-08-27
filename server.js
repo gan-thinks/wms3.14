@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
 const employeeRoutes = require('./routes/employees');
+const projectRoutes = require('./routes/projects'); // ✅ Add this line
 
 const app = express();
 
@@ -34,6 +35,7 @@ mongoose
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/projects', projectRoutes); // ✅ Add this line
 
 // Start the server
 const PORT = process.env.PORT || 5000;
