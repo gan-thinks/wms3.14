@@ -44,7 +44,7 @@ const ProjectDetails = () => {
 export default ProjectDetails;
  */
 
-import React, { useEffect, useState } from 'react';
+/* import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, 
@@ -231,7 +231,7 @@ const ProjectDetail = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-6">
-      {/* Header */}
+      // Header 
       <div className="flex justify-between items-start mb-6">
         <div>
           <button 
@@ -254,7 +254,7 @@ const ProjectDetail = () => {
         )}
       </div>
 
-      {/* Status Cards */}
+      // Status Cards 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg border">
           <div className="flex items-center gap-2">
@@ -290,7 +290,7 @@ const ProjectDetail = () => {
         </div>
       </div>
 
-      {/* Tabs */}
+      // Tabs 
       <div className="bg-white rounded-lg border">
         <div className="border-b">
           <nav className="flex space-x-8 px-6">
@@ -311,10 +311,10 @@ const ProjectDetail = () => {
         </div>
 
         <div className="p-6">
-          {/* Overview Tab */}
+          // Overview Tab 
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              {/* Project Info */}
+              // Project Info 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Project Details</h3>
@@ -372,7 +372,7 @@ const ProjectDetail = () => {
                 </div>
               </div>
 
-              {/* Team Members */}
+              // Team Members 
               <div>
                 <h3 className="text-lg font-semibold mb-4">Team Members</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -392,10 +392,10 @@ const ProjectDetail = () => {
             </div>
           )}
 
-          {/* Analytics Tab */}
+          // Analytics Tab 
           {activeTab === 'analytics' && (
             <div className="space-y-6">
-              {/* Progress Chart */}
+              // Progress Chart 
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h3 className="text-lg font-semibold mb-4">Progress Over Time</h3>
                 <ResponsiveContainer width="100%" height={300}>
@@ -416,9 +416,9 @@ const ProjectDetail = () => {
                 </ResponsiveContainer>
               </div>
 
-              {/* Charts Grid */}
+              // Charts Grid 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Task Status Pie Chart */}
+                // Task Status Pie Chart 
                 <div className="bg-gray-50 p-6 rounded-lg">
                   <h3 className="text-lg font-semibold mb-4">Tasks by Status</h3>
                   <ResponsiveContainer width="100%" height={250}>
@@ -442,7 +442,7 @@ const ProjectDetail = () => {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Task Priority Chart */}
+                // Task Priority Chart *
                 <div className="bg-gray-50 p-6 rounded-lg">
                   <h3 className="text-lg font-semibold mb-4">Tasks by Priority</h3>
                   <ResponsiveContainer width="100%" height={250}>
@@ -457,7 +457,7 @@ const ProjectDetail = () => {
                 </div>
               </div>
 
-              {/* Time Tracking */}
+              // Time Tracking 
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h3 className="text-lg font-semibold mb-4">Time Tracking</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -478,7 +478,7 @@ const ProjectDetail = () => {
             </div>
           )}
 
-          {/* Tasks Tab */}
+           Tasks Tab
           {activeTab === 'tasks' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Project Tasks</h3>
@@ -528,7 +528,7 @@ const ProjectDetail = () => {
                         </div>
                       </div>
                       
-                      {/* Progress Bar */}
+                      // Progress Bar 
                       <div className="mt-3">
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div 
@@ -544,13 +544,13 @@ const ProjectDetail = () => {
             </div>
           )}
 
-          {/* Progress Update Tab */}
+           Progress Update Tab 
           {activeTab === 'progress' && canEdit && (
             <div className="space-y-6">
               <h3 className="text-lg font-semibold">Update Progress</h3>
               
               <form onSubmit={handleProgressUpdate} className="space-y-6">
-                {/* Overall Progress */}
+                // Overall Progress 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Overall Progress (%)
@@ -569,7 +569,7 @@ const ProjectDetail = () => {
                   />
                 </div>
 
-                {/* Remarks */}
+                // Remarks 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Daily Remarks
@@ -586,7 +586,7 @@ const ProjectDetail = () => {
                   />
                 </div>
 
-                {/* Task Updates */}
+                // Task Updates 
                 <div>
                   <h4 className="text-md font-medium mb-4">Update Individual Tasks</h4>
                   <div className="space-y-4">
@@ -648,7 +648,7 @@ const ProjectDetail = () => {
                   </div>
                 </div>
 
-                {/* Blockers */}
+                // Blockers 
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="text-md font-medium">Blockers & Issues</h4>
@@ -692,7 +692,7 @@ const ProjectDetail = () => {
                   ))}
                 </div>
 
-                {/* Submit Button */}
+                // Submit Button 
                 <div className="flex justify-end">
                   <button
                     type="submit"
@@ -704,7 +704,7 @@ const ProjectDetail = () => {
                 </div>
               </form>
 
-              {/* Recent Progress Updates */}
+              // Recent Progress Updates 
               {project.progressUpdates && project.progressUpdates.length > 0 && (
                 <div className="mt-8">
                   <h4 className="text-md font-medium mb-4">Recent Updates</h4>
@@ -763,3 +763,653 @@ const ProjectDetail = () => {
 };
 
 export default ProjectDetail;
+
+*/
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { 
+  ArrowLeft, Plus, Edit, Trash2, Upload, Download, MessageSquare,
+  Users, Calendar, Clock, Target, AlertTriangle, CheckCircle,
+  User, FileText, BarChart3, Settings
+} from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { 
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer, LineChart, Line 
+} from "recharts";
+
+// Modals
+import TaskModal from '../components/TaskModal';
+import FileUploadModal from '../components/FileUploadModal';
+import TaskUpdateModal from '../components/TaskUpdateModal';
+
+const CHART_COLORS = {
+  completed: "#22c55e",
+  inProgress: "#facc15", 
+  notStarted: "#ef4444",
+  onHold: "#8b5cf6",
+  primary: "#3b82f6",
+  secondary: "#64748b"
+};
+
+const STATUS_COLORS = {
+  'Completed': 'bg-green-100 text-green-800',
+  'In Progress': 'bg-blue-100 text-blue-800',
+  'Not Started': 'bg-gray-100 text-gray-800',
+  'On Hold': 'bg-purple-100 text-purple-800'
+};
+
+const PRIORITY_COLORS = {
+  'Critical': 'bg-red-100 text-red-800 border-red-200',
+  'High': 'bg-orange-100 text-orange-800 border-orange-200',
+  'Medium': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  'Low': 'bg-green-100 text-green-800 border-green-200'
+};
+
+const ProjectDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [project, setProject] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // Modal states
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showFileModal, setShowFileModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+    fetchProjectDetail();
+  }, [id]);
+
+  const fetchProjectDetail = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/projects/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch project');
+      }
+
+      const data = await response.json();
+      setProject(data.project);
+      setAnalytics(data.analytics);
+    } catch (err) {
+      console.error('Error fetching project:', err);
+      alert('Failed to load project details');
+      navigate('/projects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const canEditProject = () => {
+    if (!project || !user) return false;
+    return project.createdBy._id === user._id || 
+           project.projectManager?._id === user._id || 
+           user.role === 'admin';
+  };
+
+  const canEditTask = (task) => {
+    if (!user) return false;
+    return task.assignedTo?._id === user._id || 
+           project.createdBy._id === user._id || 
+           project.projectManager?._id === user._id || 
+           user.role === 'admin';
+  };
+
+  const handleTaskCreate = () => {
+    setEditingTask(null);
+    setShowTaskModal(true);
+  };
+
+  const handleTaskEdit = (task) => {
+    setEditingTask(task);
+    setShowTaskModal(true);
+  };
+
+  const handleTaskUpdate = (task) => {
+    setSelectedTask(task);
+    setShowUpdateModal(true);
+  };
+
+  const handleTaskDelete = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/projects/${id}/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        fetchProjectDetail(); // Refresh data
+        alert('Task deleted successfully');
+      } else {
+        throw new Error('Failed to delete task');
+      }
+    } catch (err) {
+      console.error('Error deleting task:', err);
+      alert('Failed to delete task');
+    }
+  };
+
+  const getTaskStatusData = () => {
+    if (!project?.tasks) return [];
+    
+    const statusCount = project.tasks.reduce((acc, task) => {
+      acc[task.status] = (acc[task.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.entries(statusCount).map(([status, count]) => ({
+      name: status,
+      value: count,
+      color: CHART_COLORS[status.toLowerCase().replace(' ', '')] || CHART_COLORS.primary
+    }));
+  };
+
+  const getTaskPriorityData = () => {
+    if (!project?.tasks) return [];
+    
+    const priorityCount = project.tasks.reduce((acc, task) => {
+      acc[task.priority] = (acc[task.priority] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.entries(priorityCount).map(([priority, count]) => ({
+      name: priority,
+      value: count
+    }));
+  };
+
+  const getMemberProgressData = () => {
+    if (!project?.members || !project?.tasks) return [];
+    
+    return project.members.map(member => {
+      const memberTasks = project.tasks.filter(task => 
+        task.assignedTo?._id === member._id
+      );
+      const completedTasks = memberTasks.filter(task => 
+        task.status === 'Completed'
+      ).length;
+      
+      return {
+        name: `${member.firstName} ${member.lastName}`,
+        total: memberTasks.length,
+        completed: completedTasks,
+        progress: memberTasks.length > 0 ? Math.round((completedTasks / memberTasks.length) * 100) : 0
+      };
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
+        <p className="ml-4 text-gray-600">Loading project details...</p>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-xl font-semibold text-gray-600">Project not found</h2>
+        <Link to="/projects">
+          <Button className="mt-4">Back to Projects</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const taskStatusData = getTaskStatusData();
+  const taskPriorityData = getTaskPriorityData();
+  const memberProgressData = getMemberProgressData();
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => navigate('/projects')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Projects
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
+            <p className="text-gray-600">{project.description}</p>
+          </div>
+        </div>
+        
+        {canEditProject() && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleTaskCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Task
+            </Button>
+            <Button variant="outline" onClick={() => setShowFileModal(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Files
+            </Button>
+            <Link to={`/projects/${id}/edit`}>
+              <Button>
+                <Settings className="h-4 w-4 mr-2" />
+                Edit Project
+              </Button>
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Project Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Target className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{project.tasks?.length || 0}</p>
+                <p className="text-sm text-gray-600">Total Tasks</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">
+                  {project.tasks?.filter(t => t.status === 'Completed').length || 0}
+                </p>
+                <p className="text-sm text-gray-600">Completed</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <Clock className="h-6 w-6 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{project.overallProgress || 0}%</p>
+                <p className="text-sm text-gray-600">Progress</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Users className="h-6 w-6 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{project.members?.length || 0}</p>
+                <p className="text-sm text-gray-600">Team Members</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          {[
+            { id: 'overview', name: 'Overview', icon: BarChart3 },
+            { id: 'tasks', name: 'Tasks', icon: CheckCircle },
+            { id: 'team', name: 'Team', icon: Users },
+            { id: 'files', name: 'Files', icon: FileText }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.name}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Task Status Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Task Status Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={taskStatusData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {taskStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Task Priority Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Task Priority Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={taskPriorityData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill={CHART_COLORS.primary} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Member Progress */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Team Member Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={memberProgressData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="progress" fill={CHART_COLORS.secondary} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === 'tasks' && (
+        <div className="space-y-4">
+          {/* Task List */}
+          {project.tasks?.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <CheckCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-600 mb-2">No tasks yet</h3>
+                <p className="text-gray-500 mb-4">Get started by adding your first task</p>
+                {canEditProject() && (
+                  <Button onClick={handleTaskCreate}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Task
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {project.tasks.map(task => (
+                <Card key={task._id} className={`border-l-4 ${PRIORITY_COLORS[task.priority]?.replace('bg-', 'border-').split(' ')[0]}`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold">{task.title}</h3>
+                          <Badge className={STATUS_COLORS[task.status]}>
+                            {task.status}
+                          </Badge>
+                          <Badge className={PRIORITY_COLORS[task.priority]}>
+                            {task.priority}
+                          </Badge>
+                        </div>
+                        
+                        <p className="text-gray-600 mb-3">{task.description}</p>
+                        
+                        <div className="flex items-center gap-6 text-sm text-gray-500">
+                          {task.assignedTo && (
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              <span>{task.assignedTo.firstName} {task.assignedTo.lastName}</span>
+                            </div>
+                          )}
+                          {task.dueDate && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span>{task.estimatedHours || 0}h estimated</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="mt-3">
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>Progress</span>
+                            <span>{task.progress || 0}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${task.progress || 0}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 ml-4">
+                        {canEditTask(task) && (
+                          <>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleTaskUpdate(task)}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleTaskEdit(task)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                        {canEditProject() && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleTaskDelete(task._id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'team' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {project.members?.map(member => {
+            const memberTasks = project.tasks?.filter(task => 
+              task.assignedTo?._id === member._id
+            ) || [];
+            const completedTasks = memberTasks.filter(task => 
+              task.status === 'Completed'
+            ).length;
+
+            return (
+              <Card key={member._id}>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4 mb-4">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={member.profilePicture} />
+                      <AvatarFallback>
+                        {member.firstName?.[0]}{member.lastName?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold">{member.firstName} {member.lastName}</h3>
+                      <p className="text-sm text-gray-600">{member.role}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Tasks Assigned</span>
+                      <span className="font-medium">{memberTasks.length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Completed</span>
+                      <span className="font-medium text-green-600">{completedTasks}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Progress</span>
+                      <span className="font-medium">
+                        {memberTasks.length > 0 
+                          ? Math.round((completedTasks / memberTasks.length) * 100) 
+                          : 0}%
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: `${memberTasks.length > 0 
+                            ? Math.round((completedTasks / memberTasks.length) * 100) 
+                            : 0}%` 
+                        }}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {activeTab === 'files' && (
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle>Project Files</CardTitle>
+              {canEditProject() && (
+                <Button onClick={() => setShowFileModal(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Files
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-12">
+              <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-600 mb-2">No files uploaded</h3>
+              <p className="text-gray-500">Upload files to share with your team</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Modals */}
+      {showTaskModal && (
+        <TaskModal
+          project={project}
+          task={editingTask}
+          onClose={() => {
+            setShowTaskModal(false);
+            setEditingTask(null);
+          }}
+          onSuccess={() => {
+            fetchProjectDetail();
+            setShowTaskModal(false);
+            setEditingTask(null);
+          }}
+        />
+      )}
+
+      {showUpdateModal && selectedTask && (
+        <TaskUpdateModal
+          task={selectedTask}
+          onClose={() => {
+            setShowUpdateModal(false);
+            setSelectedTask(null);
+          }}
+          onSuccess={() => {
+            fetchProjectDetail();
+            setShowUpdateModal(false);
+            setSelectedTask(null);
+          }}
+        />
+      )}
+
+      {showFileModal && (
+        <FileUploadModal
+          projectId={id}
+          onClose={() => setShowFileModal(false)}
+          onSuccess={() => {
+            fetchProjectDetail();
+            setShowFileModal(false);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+export default ProjectDetail;
+
