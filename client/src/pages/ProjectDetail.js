@@ -829,48 +829,117 @@ const ProjectDetail = () => {
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
-      setUser(JSON.parse(userData));
+      try {
+        const parsedUser = JSON.parse(userData);
+        console.log('👤 User data:', parsedUser);
+        setUser(parsedUser);
+      } catch (err) {
+        console.error('Error parsing user data:', err);
+      }
     }
     fetchProjectDetail();
   }, [id]);
 
+  // ✅ FIXED: Updated fetch function with proper error handling
   const fetchProjectDetail = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
+      
+      console.log('🔍 Fetching project with ID:', id);
+      console.log('🔑 Token exists:', !!token);
+
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch(`http://localhost:5000/api/projects/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error('Failed to fetch project');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ API Error Details:', errorData);
+        
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/login');
+          return;
+        }
+        
+        if (response.status === 404) {
+          throw new Error('Project not found. It may have been deleted.');
+        }
+        
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch project`);
       }
 
       const data = await response.json();
-      setProject(data.project);
-      setAnalytics(data.analytics);
+      console.log('✅ Raw API response:', data);
+      console.log('✅ Response structure:', {
+        isDirectProject: !!data.name,
+        hasProjectKey: !!data.project,
+        hasAnalyticsKey: !!data.analytics
+      });
+
+      // ✅ FIXED: Handle both response structures
+      if (data.project) {
+        // Backend returns { project: ..., analytics: ... }
+        setProject(data.project);
+        setAnalytics(data.analytics);
+      } else if (data.name) {
+        // Backend returns project object directly
+        setProject(data);
+        setAnalytics(null);
+      } else {
+        throw new Error('Invalid response structure received from server');
+      }
+
     } catch (err) {
-      console.error('Error fetching project:', err);
-      alert('Failed to load project details');
+      console.error('❌ Fetch project error:', err);
+      alert(`Failed to load project details: ${err.message}`);
       navigate('/projects');
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ FIXED: Updated permission functions with string comparison
   const canEditProject = () => {
     if (!project || !user) return false;
-    return project.createdBy._id === user._id || 
-           project.projectManager?._id === user._id || 
-           user.role === 'admin';
+    
+    const userId = String(user._id || user.id);
+    const creatorId = String(project.createdBy?._id);
+    const managerId = String(project.projectManager?._id);
+    
+    console.log('🔐 Permission check:', { userId, creatorId, managerId, userRole: user.role });
+    
+    return userId === creatorId || 
+           userId === managerId || 
+           user.role === 'admin' ||
+           user.role === 'Admin';
   };
 
   const canEditTask = (task) => {
-    if (!user) return false;
-    return task.assignedTo?._id === user._id || 
-           project.createdBy._id === user._id || 
-           project.projectManager?._id === user._id || 
-           user.role === 'admin';
+    if (!user || !task || !project) return false;
+    
+    const userId = String(user._id || user.id);
+    const assignedToId = String(task.assignedTo?._id);
+    const creatorId = String(project.createdBy?._id);
+    const managerId = String(project.projectManager?._id);
+    
+    return userId === assignedToId || 
+           userId === creatorId || 
+           userId === managerId || 
+           user.role === 'admin' ||
+           user.role === 'Admin';
   };
 
   const handleTaskCreate = () => {
@@ -902,19 +971,21 @@ const ProjectDetail = () => {
         fetchProjectDetail(); // Refresh data
         alert('Task deleted successfully');
       } else {
-        throw new Error('Failed to delete task');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete task');
       }
     } catch (err) {
       console.error('Error deleting task:', err);
-      alert('Failed to delete task');
+      alert(`Failed to delete task: ${err.message}`);
     }
   };
 
   const getTaskStatusData = () => {
-    if (!project?.tasks) return [];
+    if (!project?.tasks || !Array.isArray(project.tasks)) return [];
     
     const statusCount = project.tasks.reduce((acc, task) => {
-      acc[task.status] = (acc[task.status] || 0) + 1;
+      const status = task.status || 'Not Started';
+      acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {});
 
@@ -926,10 +997,11 @@ const ProjectDetail = () => {
   };
 
   const getTaskPriorityData = () => {
-    if (!project?.tasks) return [];
+    if (!project?.tasks || !Array.isArray(project.tasks)) return [];
     
     const priorityCount = project.tasks.reduce((acc, task) => {
-      acc[task.priority] = (acc[task.priority] || 0) + 1;
+      const priority = task.priority || 'Medium';
+      acc[priority] = (acc[priority] || 0) + 1;
       return acc;
     }, {});
 
@@ -940,18 +1012,18 @@ const ProjectDetail = () => {
   };
 
   const getMemberProgressData = () => {
-    if (!project?.members || !project?.tasks) return [];
+    if (!project?.members || !Array.isArray(project.members) || !project?.tasks) return [];
     
     return project.members.map(member => {
       const memberTasks = project.tasks.filter(task => 
-        task.assignedTo?._id === member._id
+        task.assignedTo && String(task.assignedTo._id) === String(member._id)
       );
       const completedTasks = memberTasks.filter(task => 
         task.status === 'Completed'
       ).length;
       
       return {
-        name: `${member.firstName} ${member.lastName}`,
+        name: `${member.firstName || ''} ${member.lastName || ''}`.trim(),
         total: memberTasks.length,
         completed: completedTasks,
         progress: memberTasks.length > 0 ? Math.round((completedTasks / memberTasks.length) * 100) : 0
@@ -968,12 +1040,15 @@ const ProjectDetail = () => {
     );
   }
 
+  // ✅ IMPROVED: Better error handling for no project
   if (!project) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-600">Project not found</h2>
+        <AlertTriangle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-gray-600 mb-2">Project not found</h2>
+        <p className="text-gray-500 mb-6">The project you're looking for doesn't exist or you don't have permission to view it.</p>
         <Link to="/projects">
-          <Button className="mt-4">Back to Projects</Button>
+          <Button>Back to Projects</Button>
         </Link>
       </div>
     );
@@ -1057,7 +1132,7 @@ const ProjectDetail = () => {
                 <Clock className="h-6 w-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{project.overallProgress || 0}%</p>
+                <p className="text-2xl font-bold">{project.overallProgress || project.progress || 0}%</p>
                 <p className="text-sm text-gray-600">Progress</p>
               </div>
             </div>
@@ -1113,23 +1188,29 @@ const ProjectDetail = () => {
               <CardTitle>Task Status Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={taskStatusData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {taskStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              {taskStatusData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={taskStatusData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {taskStatusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-gray-500">
+                  No task data available
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1139,15 +1220,21 @@ const ProjectDetail = () => {
               <CardTitle>Task Priority Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={taskPriorityData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill={CHART_COLORS.primary} />
-                </BarChart>
-              </ResponsiveContainer>
+              {taskPriorityData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={taskPriorityData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="value" fill={CHART_COLORS.primary} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-gray-500">
+                  No priority data available
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1157,15 +1244,21 @@ const ProjectDetail = () => {
               <CardTitle>Team Member Progress</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={memberProgressData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="progress" fill={CHART_COLORS.secondary} />
-                </BarChart>
-              </ResponsiveContainer>
+              {memberProgressData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={memberProgressData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="progress" fill={CHART_COLORS.secondary} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-gray-500">
+                  No team member data available
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -1174,7 +1267,7 @@ const ProjectDetail = () => {
       {activeTab === 'tasks' && (
         <div className="space-y-4">
           {/* Task List */}
-          {project.tasks?.length === 0 ? (
+          {!project.tasks || project.tasks.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center">
                 <CheckCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -1197,15 +1290,17 @@ const ProjectDetail = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="text-lg font-semibold">{task.title}</h3>
-                          <Badge className={STATUS_COLORS[task.status]}>
-                            {task.status}
+                          <Badge className={STATUS_COLORS[task.status] || STATUS_COLORS['Not Started']}>
+                            {task.status || 'Not Started'}
                           </Badge>
-                          <Badge className={PRIORITY_COLORS[task.priority]}>
-                            {task.priority}
+                          <Badge className={PRIORITY_COLORS[task.priority] || PRIORITY_COLORS['Medium']}>
+                            {task.priority || 'Medium'}
                           </Badge>
                         </div>
                         
-                        <p className="text-gray-600 mb-3">{task.description}</p>
+                        {task.description && (
+                          <p className="text-gray-600 mb-3">{task.description}</p>
+                        )}
                         
                         <div className="flex items-center gap-6 text-sm text-gray-500">
                           {task.assignedTo && (
@@ -1248,6 +1343,7 @@ const ProjectDetail = () => {
                               variant="outline" 
                               size="sm"
                               onClick={() => handleTaskUpdate(task)}
+                              title="Update Progress"
                             >
                               <MessageSquare className="h-4 w-4" />
                             </Button>
@@ -1255,6 +1351,7 @@ const ProjectDetail = () => {
                               variant="outline" 
                               size="sm"
                               onClick={() => handleTaskEdit(task)}
+                              title="Edit Task"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -1266,6 +1363,7 @@ const ProjectDetail = () => {
                             size="sm"
                             onClick={() => handleTaskDelete(task._id)}
                             className="text-red-600 hover:text-red-700"
+                            title="Delete Task"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1282,63 +1380,71 @@ const ProjectDetail = () => {
 
       {activeTab === 'team' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {project.members?.map(member => {
-            const memberTasks = project.tasks?.filter(task => 
-              task.assignedTo?._id === member._id
-            ) || [];
-            const completedTasks = memberTasks.filter(task => 
-              task.status === 'Completed'
-            ).length;
+          {project.members && project.members.length > 0 ? (
+            project.members.map(member => {
+              const memberTasks = project.tasks?.filter(task => 
+                task.assignedTo && String(task.assignedTo._id) === String(member._id)
+              ) || [];
+              const completedTasks = memberTasks.filter(task => 
+                task.status === 'Completed'
+              ).length;
 
-            return (
-              <Card key={member._id}>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4 mb-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={member.profilePicture} />
-                      <AvatarFallback>
-                        {member.firstName?.[0]}{member.lastName?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-semibold">{member.firstName} {member.lastName}</h3>
-                      <p className="text-sm text-gray-600">{member.role}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Tasks Assigned</span>
-                      <span className="font-medium">{memberTasks.length}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Completed</span>
-                      <span className="font-medium text-green-600">{completedTasks}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Progress</span>
-                      <span className="font-medium">
-                        {memberTasks.length > 0 
-                          ? Math.round((completedTasks / memberTasks.length) * 100) 
-                          : 0}%
-                      </span>
+              return (
+                <Card key={member._id}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={member.profilePicture} />
+                        <AvatarFallback>
+                          {(member.firstName?.[0] || '').toUpperCase()}{(member.lastName?.[0] || '').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="font-semibold">{member.firstName} {member.lastName}</h3>
+                        <p className="text-sm text-gray-600">{member.role}</p>
+                      </div>
                     </div>
 
-                    <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ 
-                          width: `${memberTasks.length > 0 
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Tasks Assigned</span>
+                        <span className="font-medium">{memberTasks.length}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Completed</span>
+                        <span className="font-medium text-green-600">{completedTasks}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Progress</span>
+                        <span className="font-medium">
+                          {memberTasks.length > 0 
                             ? Math.round((completedTasks / memberTasks.length) * 100) 
-                            : 0}%` 
-                        }}
-                      />
+                            : 0}%
+                        </span>
+                      </div>
+
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: `${memberTasks.length > 0 
+                              ? Math.round((completedTasks / memberTasks.length) * 100) 
+                              : 0}%` 
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-600 mb-2">No team members</h3>
+              <p className="text-gray-500">Add team members to collaborate on this project</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -1356,11 +1462,32 @@ const ProjectDetail = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12">
-              <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-600 mb-2">No files uploaded</h3>
-              <p className="text-gray-500">Upload files to share with your team</p>
-            </div>
+            {project.files && project.files.length > 0 ? (
+              <div className="grid gap-4">
+                {project.files.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-8 w-8 text-blue-500" />
+                      <div>
+                        <p className="font-medium">{file.name}</p>
+                        <p className="text-sm text-gray-500">
+                          Uploaded {file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'Unknown date'}
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-600 mb-2">No files uploaded</h3>
+                <p className="text-gray-500">Upload files to share with your team</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

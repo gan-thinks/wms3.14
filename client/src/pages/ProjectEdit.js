@@ -3,25 +3,60 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Plus, X, Users, Calendar, Clock, User, 
   Edit, Trash2, MessageSquare, Upload, File, CheckCircle,
-  AlertTriangle, Download, Eye, Percent
+  AlertTriangle, Download, Eye, Percent, AlertCircle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+// Error Display Component
+const ErrorAlert = ({ error, onClose }) => (
+  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+    <div className="flex items-center">
+      <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+      <div className="flex-1">
+        <h3 className="text-sm font-medium text-red-800">Error</h3>
+        <p className="text-sm text-red-700 mt-1">{error}</p>
+      </div>
+      {onClose && (
+        <button onClick={onClose} className="text-red-600 hover:text-red-800">
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  </div>
+);
+
+// Loading Component
+const LoadingSpinner = ({ message = "Loading..." }) => (
+  <div className="flex justify-center items-center h-64">
+    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
+    <p className="ml-4 text-gray-600">{message}</p>
+  </div>
+);
+
 const ProjectEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  
+  // State management
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
+  const [taskFormLoading, setTaskFormLoading] = useState(false);
+  const [updateFormLoading, setUpdateFormLoading] = useState(false);
 
   // Modal states
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [selectedTaskForUpdate, setSelectedTaskForUpdate] = useState(null);
+
+  // Form validation errors
+  const [taskFormErrors, setTaskFormErrors] = useState({});
+  const [updateFormErrors, setUpdateFormErrors] = useState({});
 
   // Task form data
   const [taskFormData, setTaskFormData] = useState({
@@ -46,60 +81,202 @@ const ProjectEdit = () => {
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
-      setUser(JSON.parse(userData));
+      try {
+        setUser(JSON.parse(userData));
+      } catch (err) {
+        console.error('Error parsing user data:', err);
+        setError('Invalid user session. Please login again.');
+        return;
+      }
     }
-    fetchProject();
-    fetchEmployees();
+    
+    initializeData();
   }, [id]);
 
-  const fetchProject = async () => {
+  // Initialize data with error handling
+  const initializeData = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/projects/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setProject(data.project);
-      } else {
-        throw new Error('Failed to load project');
-      }
+      await Promise.all([fetchProject(), fetchEmployees()]);
     } catch (err) {
-      console.error('Error fetching project:', err);
-      alert('Failed to load project');
+      console.error('Failed to initialize data:', err);
+      setError('Failed to load project data. Please try refreshing the page.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Enhanced fetch project with better error handling
+  const fetchProject = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('Fetching project with ID:', id);
+      const response = await fetch(`http://localhost:5000/api/projects/${id}`, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Session expired. Please login again.');
+        } else if (response.status === 403) {
+          throw new Error('You do not have permission to edit this project.');
+        } else if (response.status === 404) {
+          throw new Error('Project not found. It may have been deleted.');
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Server error: ${response.status}`);
+        }
+      }
+
+      const data = await response.json();
+      console.log('Project data received:', data);
+
+      // Handle different response formats
+      const projectData = data.project || data;
+      if (!projectData || !projectData._id) {
+        throw new Error('Invalid project data received from server.');
+      }
+
+      setProject(projectData);
+      return projectData;
+    } catch (err) {
+      console.error('Error fetching project:', err);
+      
+      // Handle specific error cases
+      if (err.message.includes('login') || err.message.includes('Session expired')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+        return;
+      }
+      
+      if (err.message.includes('not found') || err.message.includes('deleted')) {
+        setError(err.message);
+        setTimeout(() => navigate('/projects'), 3000);
+        return;
+      }
+
+      throw err; // Re-throw for general error handling
+    }
+  };
+
+  // Enhanced fetch employees with error handling
   const fetchEmployees = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) return; // Skip if no token
+
       const response = await fetch('http://localhost:5000/api/employees', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (response.ok) {
         const data = await response.json();
-        setEmployees(data || []);
+        setEmployees(Array.isArray(data) ? data : []);
       } else {
-        throw new Error('Failed to load employees');
+        console.warn('Failed to load employees list');
+        setEmployees([]); // Set empty array instead of failing
       }
     } catch (err) {
-      console.error('Error fetching employees:', err);
+      console.warn('Error fetching employees:', err);
+      setEmployees([]); // Don't fail the whole component for this
     }
   };
 
-  // Task form handlers
+  // Form validation
+  const validateTaskForm = () => {
+    const errors = {};
+    
+    if (!taskFormData.title.trim()) {
+      errors.title = 'Task title is required';
+    }
+    
+    if (taskFormData.estimatedHours && taskFormData.estimatedHours < 0) {
+      errors.estimatedHours = 'Estimated hours cannot be negative';
+    }
+    
+    if (taskFormData.dueDate) {
+      const dueDate = new Date(taskFormData.dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (dueDate < today) {
+        errors.dueDate = 'Due date cannot be in the past';
+      }
+    }
+    
+    // Validate file sizes (max 10MB per file)
+    taskFormData.files.forEach((file, index) => {
+      if (file.size > 10 * 1024 * 1024) {
+        errors[`file_${index}`] = `${file.name} is too large. Maximum size is 10MB.`;
+      }
+    });
+    
+    setTaskFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validateUpdateForm = () => {
+    const errors = {};
+    
+    if (updateFormData.progress < 0 || updateFormData.progress > 100) {
+      errors.progress = 'Progress must be between 0 and 100';
+    }
+    
+    if (updateFormData.hoursWorked && updateFormData.hoursWorked < 0) {
+      errors.hoursWorked = 'Hours worked cannot be negative';
+    }
+    
+    setUpdateFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Task form handlers with error handling
   const handleTaskFormChange = (e) => {
     const { name, value } = e.target;
     setTaskFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear specific field error when user starts typing
+    if (taskFormErrors[name]) {
+      setTaskFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handleTaskFileChange = (e) => {
     const files = Array.from(e.target.files);
-    setTaskFormData(prev => ({ ...prev, files: [...prev.files, ...files] }));
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    const validFiles = [];
+    const errors = { ...taskFormErrors };
+    
+    files.forEach((file, index) => {
+      if (file.size > maxFileSize) {
+        errors[`file_${index}`] = `${file.name} is too large. Maximum size is 10MB.`;
+      } else {
+        validFiles.push(file);
+        delete errors[`file_${index}`];
+      }
+    });
+    
+    setTaskFormData(prev => ({ ...prev, files: [...prev.files, ...validFiles] }));
+    setTaskFormErrors(errors);
   };
 
   const removeTaskFile = (index) => {
@@ -107,9 +284,16 @@ const ProjectEdit = () => {
       ...prev,
       files: prev.files.filter((_, i) => i !== index)
     }));
+    
+    // Clear file-related errors
+    const newErrors = { ...taskFormErrors };
+    delete newErrors[`file_${index}`];
+    setTaskFormErrors(newErrors);
   };
 
   const openTaskForm = (task = null) => {
+    setTaskFormErrors({});
+    
     if (task) {
       setTaskFormData({
         title: task.title || '',
@@ -139,17 +323,22 @@ const ProjectEdit = () => {
   const handleTaskSubmit = async (e) => {
     e.preventDefault();
     
-    if (!taskFormData.title.trim()) {
-      alert('Task title is required');
+    if (!validateTaskForm()) {
       return;
     }
 
+    setTaskFormLoading(true);
+    setTaskFormErrors({});
+
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication required. Please login again.');
+      }
+
       const formDataToSend = new FormData();
-      
-      formDataToSend.append('title', taskFormData.title);
-      formDataToSend.append('description', taskFormData.description);
+      formDataToSend.append('title', taskFormData.title.trim());
+      formDataToSend.append('description', taskFormData.description.trim());
       formDataToSend.append('assignedTo', taskFormData.assignedTo);
       formDataToSend.append('priority', taskFormData.priority);
       formDataToSend.append('estimatedHours', taskFormData.estimatedHours || 0);
@@ -171,18 +360,25 @@ const ProjectEdit = () => {
         body: formDataToSend
       });
 
-      if (response.ok) {
-        alert(editingTask ? 'Task updated successfully!' : 'Task created successfully!');
-        setShowTaskForm(false);
-        setEditingTask(null);
-        fetchProject();
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to save task');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save task');
       }
+
+      // Success
+      setShowTaskForm(false);
+      setEditingTask(null);
+      await fetchProject();
+      
+      // Show success message
+      setError(null);
+      alert(editingTask ? 'Task updated successfully!' : 'Task created successfully!');
+      
     } catch (err) {
       console.error('Task save error:', err);
-      alert('Error: ' + err.message);
+      setTaskFormErrors({ general: err.message });
+    } finally {
+      setTaskFormLoading(false);
     }
   };
 
@@ -191,25 +387,31 @@ const ProjectEdit = () => {
 
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication required. Please login again.');
+      }
+
       const response = await fetch(`http://localhost:5000/api/projects/${id}/tasks/${taskId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (response.ok) {
-        alert('Task deleted successfully!');
-        fetchProject();
-      } else {
-        throw new Error('Failed to delete task');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete task');
       }
+
+      await fetchProject();
+      alert('Task deleted successfully!');
     } catch (err) {
       console.error('Delete task error:', err);
-      alert('Error: ' + err.message);
+      setError(`Failed to delete task: ${err.message}`);
     }
   };
 
-  // Task update handlers
+  // Task update handlers with error handling
   const openUpdateForm = (task) => {
+    setUpdateFormErrors({});
     setUpdateFormData({
       status: task.status || 'Not Started',
       progress: task.progress || 0,
@@ -223,11 +425,29 @@ const ProjectEdit = () => {
   const handleUpdateFormChange = (e) => {
     const { name, value } = e.target;
     setUpdateFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear specific field error when user starts typing
+    if (updateFormErrors[name]) {
+      setUpdateFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handleUpdateFileChange = (e) => {
     const files = Array.from(e.target.files);
-    setUpdateFormData(prev => ({ ...prev, files: [...prev.files, ...files] }));
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    const validFiles = [];
+    
+    files.forEach(file => {
+      if (file.size <= maxFileSize) {
+        validFiles.push(file);
+      }
+    });
+    
+    setUpdateFormData(prev => ({ ...prev, files: [...prev.files, ...validFiles] }));
   };
 
   const removeUpdateFile = (index) => {
@@ -239,14 +459,24 @@ const ProjectEdit = () => {
 
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateUpdateForm()) {
+      return;
+    }
+
+    setUpdateFormLoading(true);
+    setUpdateFormErrors({});
 
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication required. Please login again.');
+      }
+
       const formDataToSend = new FormData();
-      
       formDataToSend.append('status', updateFormData.status);
       formDataToSend.append('progress', updateFormData.progress);
-      formDataToSend.append('remarks', updateFormData.remarks);
+      formDataToSend.append('remarks', updateFormData.remarks.trim());
       formDataToSend.append('hoursWorked', updateFormData.hoursWorked || 0);
 
       updateFormData.files.forEach(file => {
@@ -259,23 +489,26 @@ const ProjectEdit = () => {
         body: formDataToSend
       });
 
-      if (response.ok) {
-        alert('Task progress updated successfully!');
-        setSelectedTaskForUpdate(null);
-        fetchProject();
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to update task');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update task');
       }
+
+      setSelectedTaskForUpdate(null);
+      await fetchProject();
+      alert('Task progress updated successfully!');
+      
     } catch (err) {
       console.error('Update task error:', err);
-      alert('Error: ' + err.message);
+      setUpdateFormErrors({ general: err.message });
+    } finally {
+      setUpdateFormLoading(false);
     }
   };
 
-  // ✅ UPDATED: Allow all users to edit tasks (no restrictions)
+  // Utility functions
   const canEditTask = (task) => {
-    return !!user; // Allow all logged-in users to edit any task
+    return !!user;
   };
 
   const getStatusColor = (status) => {
@@ -298,20 +531,41 @@ const ProjectEdit = () => {
     }
   };
 
-  if (loading) {
+  // Error boundary for the component
+  if (error) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
-        <p className="ml-4 text-gray-600">Loading project tasks...</p>
+      <div className="space-y-6">
+        <ErrorAlert 
+          error={error} 
+          onClose={() => setError(null)}
+        />
+        <div className="text-center py-12">
+          <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-600 mb-4">Unable to load project</h2>
+          <div className="space-x-4">
+            <Button onClick={initializeData} variant="outline">
+              Try Again
+            </Button>
+            <Button onClick={() => navigate('/projects')}>
+              Back to Projects
+            </Button>
+          </div>
+        </div>
       </div>
     );
+  }
+
+  if (loading) {
+    return <LoadingSpinner message="Loading project tasks..." />;
   }
 
   if (!project) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-600">Project not found</h2>
-        <Button onClick={() => navigate('/projects')} className="mt-4">
+        <AlertTriangle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-gray-600 mb-4">Project not found</h2>
+        <p className="text-gray-500 mb-6">The project you're looking for doesn't exist or has been deleted.</p>
+        <Button onClick={() => navigate('/projects')}>
           Back to Projects
         </Button>
       </div>
@@ -537,30 +791,30 @@ const ProjectEdit = () => {
                       )}
                     </div>
 
-                    {/* ✅ UPDATED: Action Buttons - All users can edit */}
+                    {/* Action Buttons */}
                     <div className="flex flex-col gap-2 ml-4">
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={() => openUpdateForm(task)}
                         title="Update Progress & Add Remarks"
+                        disabled={updateFormLoading}
                       >
                         <MessageSquare className="h-4 w-4 mr-1" />
                         Update
                       </Button>
                       
-                      {/* ✅ Edit button visible to ALL users */}
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={() => openTaskForm(task)}
                         title="Edit Task Details"
+                        disabled={taskFormLoading}
                       >
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
                       
-                      {/* ✅ Delete button visible to ALL users */}
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -588,12 +842,21 @@ const ProjectEdit = () => {
               <h2 className="text-xl font-semibold">
                 {editingTask ? 'Edit Task' : 'Create New Task'}
               </h2>
-              <button onClick={() => setShowTaskForm(false)} className="text-gray-500 hover:text-gray-700">
+              <button 
+                onClick={() => setShowTaskForm(false)} 
+                className="text-gray-500 hover:text-gray-700"
+                disabled={taskFormLoading}
+              >
                 <X className="h-6 w-6" />
               </button>
             </div>
 
             <form onSubmit={handleTaskSubmit} className="p-6 space-y-6">
+              {/* Show general errors */}
+              {taskFormErrors.general && (
+                <ErrorAlert error={taskFormErrors.general} />
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -605,9 +868,15 @@ const ProjectEdit = () => {
                     required
                     value={taskFormData.title}
                     onChange={handleTaskFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      taskFormErrors.title ? 'border-red-300' : 'border-gray-300'
+                    }`}
                     placeholder="Enter task title"
+                    disabled={taskFormLoading}
                   />
+                  {taskFormErrors.title && (
+                    <p className="text-red-500 text-xs mt-1">{taskFormErrors.title}</p>
+                  )}
                 </div>
 
                 <div>
@@ -620,6 +889,7 @@ const ProjectEdit = () => {
                     value={taskFormData.assignedTo}
                     onChange={handleTaskFormChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={taskFormLoading}
                   >
                     <option value="">Select team member</option>
                     {project.members?.map(member => (
@@ -645,6 +915,7 @@ const ProjectEdit = () => {
                     value={taskFormData.priority}
                     onChange={handleTaskFormChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={taskFormLoading}
                   >
                     <option value="Low">Low</option>
                     <option value="Medium">Medium</option>
@@ -665,9 +936,15 @@ const ProjectEdit = () => {
                     step="0.5"
                     value={taskFormData.estimatedHours}
                     onChange={handleTaskFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      taskFormErrors.estimatedHours ? 'border-red-300' : 'border-gray-300'
+                    }`}
                     placeholder="0"
+                    disabled={taskFormLoading}
                   />
+                  {taskFormErrors.estimatedHours && (
+                    <p className="text-red-500 text-xs mt-1">{taskFormErrors.estimatedHours}</p>
+                  )}
                 </div>
 
                 <div className="md:col-span-2">
@@ -680,8 +957,14 @@ const ProjectEdit = () => {
                     name="dueDate"
                     value={taskFormData.dueDate}
                     onChange={handleTaskFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      taskFormErrors.dueDate ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    disabled={taskFormLoading}
                   />
+                  {taskFormErrors.dueDate && (
+                    <p className="text-red-500 text-xs mt-1">{taskFormErrors.dueDate}</p>
+                  )}
                 </div>
               </div>
 
@@ -696,6 +979,7 @@ const ProjectEdit = () => {
                   onChange={handleTaskFormChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Describe the task requirements and objectives"
+                  disabled={taskFormLoading}
                 />
               </div>
 
@@ -711,10 +995,16 @@ const ProjectEdit = () => {
                   onChange={handleTaskFileChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip,.txt"
+                  disabled={taskFormLoading}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Support: PDF, DOC, XLS, images, ZIP files
+                  Support: PDF, DOC, XLS, images, ZIP files (Max 10MB per file)
                 </p>
+                
+                {/* File errors */}
+                {Object.keys(taskFormErrors).filter(key => key.startsWith('file_')).map(key => (
+                  <p key={key} className="text-red-500 text-xs mt-1">{taskFormErrors[key]}</p>
+                ))}
                 
                 {/* Selected Files */}
                 {taskFormData.files.length > 0 && (
@@ -731,6 +1021,7 @@ const ProjectEdit = () => {
                           type="button"
                           onClick={() => removeTaskFile(index)}
                           className="text-red-500 hover:text-red-700"
+                          disabled={taskFormLoading}
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -741,10 +1032,27 @@ const ProjectEdit = () => {
               </div>
 
               <div className="flex gap-4 pt-4">
-                <Button type="submit" className="flex-1">
-                  {editingTask ? 'Update Task' : 'Create Task'}
+                <Button 
+                  type="submit" 
+                  className="flex-1"
+                  disabled={taskFormLoading}
+                >
+                  {taskFormLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {editingTask ? 'Updating...' : 'Creating...'}
+                    </>
+                  ) : (
+                    editingTask ? 'Update Task' : 'Create Task'
+                  )}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setShowTaskForm(false)} className="flex-1">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowTaskForm(false)} 
+                  className="flex-1"
+                  disabled={taskFormLoading}
+                >
                   Cancel
                 </Button>
               </div>
@@ -762,12 +1070,21 @@ const ProjectEdit = () => {
                 <h2 className="text-xl font-semibold">Update Task Progress</h2>
                 <p className="text-gray-600 mt-1">{selectedTaskForUpdate.title}</p>
               </div>
-              <button onClick={() => setSelectedTaskForUpdate(null)} className="text-gray-500 hover:text-gray-700">
+              <button 
+                onClick={() => setSelectedTaskForUpdate(null)} 
+                className="text-gray-500 hover:text-gray-700"
+                disabled={updateFormLoading}
+              >
                 <X className="h-6 w-6" />
               </button>
             </div>
 
             <form onSubmit={handleUpdateSubmit} className="p-6 space-y-6">
+              {/* Show general errors */}
+              {updateFormErrors.general && (
+                <ErrorAlert error={updateFormErrors.general} />
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
@@ -776,6 +1093,7 @@ const ProjectEdit = () => {
                     value={updateFormData.status}
                     onChange={handleUpdateFormChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={updateFormLoading}
                   >
                     <option value="Not Started">Not Started</option>
                     <option value="In Progress">In Progress</option>
@@ -793,8 +1111,14 @@ const ProjectEdit = () => {
                     max="100"
                     value={updateFormData.progress}
                     onChange={handleUpdateFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      updateFormErrors.progress ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    disabled={updateFormLoading}
                   />
+                  {updateFormErrors.progress && (
+                    <p className="text-red-500 text-xs mt-1">{updateFormErrors.progress}</p>
+                  )}
                 </div>
 
                 <div>
@@ -806,9 +1130,15 @@ const ProjectEdit = () => {
                     step="0.5"
                     value={updateFormData.hoursWorked}
                     onChange={handleUpdateFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      updateFormErrors.hoursWorked ? 'border-red-300' : 'border-gray-300'
+                    }`}
                     placeholder="0"
+                    disabled={updateFormLoading}
                   />
+                  {updateFormErrors.hoursWorked && (
+                    <p className="text-red-500 text-xs mt-1">{updateFormErrors.hoursWorked}</p>
+                  )}
                 </div>
               </div>
 
@@ -824,6 +1154,7 @@ const ProjectEdit = () => {
                   onChange={handleUpdateFormChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Describe what you've accomplished, any challenges faced, or next steps..."
+                  disabled={updateFormLoading}
                 />
               </div>
 
@@ -839,6 +1170,7 @@ const ProjectEdit = () => {
                   onChange={handleUpdateFileChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip"
+                  disabled={updateFormLoading}
                 />
                 
                 {updateFormData.files.length > 0 && (
@@ -850,6 +1182,7 @@ const ProjectEdit = () => {
                           type="button"
                           onClick={() => removeUpdateFile(index)}
                           className="text-red-500 hover:text-red-700"
+                          disabled={updateFormLoading}
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -860,10 +1193,27 @@ const ProjectEdit = () => {
               </div>
 
               <div className="flex gap-4 pt-4">
-                <Button type="submit" className="flex-1">
-                  Update Progress
+                <Button 
+                  type="submit" 
+                  className="flex-1"
+                  disabled={updateFormLoading}
+                >
+                  {updateFormLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Progress'
+                  )}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setSelectedTaskForUpdate(null)} className="flex-1">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setSelectedTaskForUpdate(null)} 
+                  className="flex-1"
+                  disabled={updateFormLoading}
+                >
                   Cancel
                 </Button>
               </div>

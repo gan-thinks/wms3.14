@@ -2,228 +2,6 @@
 const mongoose = require('mongoose');
 
 // Task Schema with progress tracking
-const taskSchema = new mongoose.Schema(
-  {
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    description: {
-      type: String,
-      default: '',
-    },
-    assignedTo: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
-      default: null,
-    },
-    status: {
-      type: String,
-      enum: ['Not Started', 'In Progress', 'Completed', 'On Hold'],
-      default: 'Not Started'
-    },
-    progress: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100
-    },
-    priority: {
-      type: String,
-      enum: ['Low', 'Medium', 'High', 'Critical'],
-      default: 'Medium'
-    },
-    dueDate: {
-      type: Date,
-      default: null
-    },
-    estimatedHours: {
-      type: Number,
-      default: 0
-    },
-    actualHours: {
-      type: Number,
-      default: 0
-    }
-  },
-  { timestamps: true }
-);
-
-// Daily Progress Update Schema
-const progressUpdateSchema = new mongoose.Schema(
-  {
-    date: {
-      type: Date,
-      required: true,
-      default: Date.now
-    },
-    overallProgress: {
-      type: Number,
-      required: true,
-      min: 0,
-      max: 100
-    },
-    remarks: {
-      type: String,
-      trim: true,
-      maxLength: 500
-    },
-    updatedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
-      required: true
-    },
-    taskUpdates: [
-      {
-        taskId: {
-          type: mongoose.Schema.Types.ObjectId,
-          required: true
-        },
-        progress: {
-          type: Number,
-          min: 0,
-          max: 100
-        },
-        hoursWorked: {
-          type: Number,
-          default: 0
-        },
-        status: {
-          type: String,
-          enum: ['Not Started', 'In Progress', 'Completed', 'On Hold']
-        },
-        notes: String
-      }
-    ],
-    blockers: [
-      {
-        description: String,
-        severity: {
-          type: String,
-          enum: ['Low', 'Medium', 'High', 'Critical'],
-          default: 'Medium'
-        }
-      }
-    ]
-  },
-  { timestamps: true }
-);
-
-// Project Schema with enhanced tracking
-const projectSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    description: {
-      type: String,
-      default: '',
-    },
-    status: {
-      type: String,
-      enum: ['Planning', 'In Progress', 'Completed', 'On Hold', 'Cancelled'],
-      default: 'Planning'
-    },
-    priority: {
-      type: String,
-      enum: ['Low', 'Medium', 'High', 'Critical'],
-      default: 'Medium'
-    },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
-      required: true,
-    },
-    projectManager: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
-      default: null
-    },
-    members: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Employee',
-      },
-    ],
-    tasks: [taskSchema],
-    progressUpdates: [progressUpdateSchema],
-    startDate: {
-      type: Date,
-      default: Date.now
-    },
-    expectedEndDate: {
-      type: Date,
-      default: null
-    },
-    actualEndDate: {
-      type: Date,
-      default: null
-    },
-    budget: {
-      type: Number,
-      default: 0
-    },
-    actualCost: {
-      type: Number,
-      default: 0
-    },
-    overallProgress: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100
-    },
-    lastProgressUpdate: {
-      type: Date,
-      default: null
-    }
-  },
-  {
-    timestamps: true,
-  }
-);
-
-// Calculate overall progress based on task completion
-projectSchema.methods.calculateProgress = function() {
-  if (this.tasks.length === 0) return 0;
-  
-  const totalProgress = this.tasks.reduce((sum, task) => sum + task.progress, 0);
-  return Math.round(totalProgress / this.tasks.length);
-};
-
-// Update project status based on progress
-projectSchema.methods.updateStatus = function() {
-  const progress = this.calculateProgress();
-  
-  if (progress === 0) {
-    this.status = 'Planning';
-  } else if (progress === 100) {
-    this.status = 'Completed';
-    this.actualEndDate = new Date();
-  } else {
-    this.status = 'In Progress';
-  }
-  
-  this.overallProgress = progress;
-  this.lastProgressUpdate = new Date();
-};
-
-// Pre-save middleware to auto-calculate progress
-projectSchema.pre('save', function(next) {
-  this.updateStatus();
-  next();
-});
-
-module.exports = mongoose.model('Project', projectSchema);
-
-*/
-
-const mongoose = require('mongoose');
-
-// Task Schema with progress tracking
 const taskSchema = new mongoose.Schema({
     title: {
         type: String,
@@ -567,5 +345,91 @@ projectSchema.pre('save', function(next) {
     this.updateStatus();
     next();
 });
+
+module.exports = mongoose.model('Project', projectSchema);
+*/
+
+const mongoose = require('mongoose');
+
+const remarkSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+  userName: { type: String, required: true },
+  message: { type: String, required: true },
+  date: { type: Date, default: Date.now }
+});
+
+const updateSchema = new mongoose.Schema({
+  type: { type: String, required: true }, // "progress", "task", "member", "remark"
+  description: { type: String, required: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+  date: { type: Date, default: Date.now }
+});
+
+const taskSchema = new mongoose.Schema({
+  title: { type: String, required: true, trim: true },
+  description: { type: String, default: '' },
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+  status: { 
+    type: String, 
+    enum: ['Not Started', 'In Progress', 'Completed', 'On Hold'], 
+    default: 'Not Started' 
+  },
+  priority: { 
+    type: String, 
+    enum: ['Low', 'Medium', 'High', 'Critical'], 
+    default: 'Medium' 
+  },
+  estimatedHours: { type: Number, default: 0 },
+  hoursWorked: { type: Number, default: 0 },
+  progress: { type: Number, default: 0, min: 0, max: 100 },
+  dueDate: { type: Date },
+  files: [{ 
+    name: String, 
+    url: String, 
+    size: Number,
+    type: { type: String, default: 'attachment' }, // 'attachment' or 'progress'
+    uploadedAt: { type: Date, default: Date.now }
+  }],
+  remarks: { type: String, default: '' },
+  lastUpdated: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const projectSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  description: { type: String, default: '' },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }],
+  tasks: [taskSchema],
+  remarks: [remarkSchema],
+  updates: [updateSchema],
+  progress: { type: Number, default: 0, min: 0, max: 100 },
+  status: { 
+    type: String, 
+    enum: ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Planning'], // ✅ ADDED 'Planning'
+    default: 'Not Started' 
+  },
+  priority: { 
+    type: String, 
+    enum: ['Low', 'Medium', 'High', 'Critical'], 
+    default: 'Medium' 
+  },
+  startDate: { type: Date, default: Date.now },
+  endDate: { type: Date },
+  files: [{ 
+    name: String, 
+    url: String, 
+    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+    uploadedAt: { type: Date, default: Date.now }
+  }]
+}, { timestamps: true });
+
+// Calculate progress based on completed tasks
+projectSchema.methods.calculateProgress = function() {
+  if (this.tasks.length === 0) return 0;
+  const completedTasks = this.tasks.filter(task => task.status === 'Completed').length;
+  return Math.round((completedTasks / this.tasks.length) * 100);
+};
 
 module.exports = mongoose.model('Project', projectSchema);
