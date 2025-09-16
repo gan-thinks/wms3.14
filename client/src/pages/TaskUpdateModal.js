@@ -221,7 +221,7 @@ export default TaskUpdateModal;
 */
 
 import React, { useState, useEffect } from 'react';
-import { X, Upload } from 'lucide-react';
+import { X, Upload, MessageSquare, Percent, Clock } from 'lucide-react';
 
 const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -268,6 +268,8 @@ const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
           break;
         case 'On Hold':
           // Keep current progress
+          break;
+        default:
           break;
       }
       setFormData(prev => ({
@@ -318,6 +320,11 @@ const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
         formData: formData
       });
 
+      // Use the correct API endpoint that matches your backend
+      const apiUrl = `http://localhost:5000/api/projects/${projectId}/tasks/${task._id}/update`;
+      
+      console.log('🔄 API URL:', apiUrl);
+
       // Create FormData for file upload
       const formDataToSend = new FormData();
       formDataToSend.append('status', formData.status);
@@ -330,9 +337,6 @@ const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
         formDataToSend.append('files', file);
       });
 
-      const apiUrl = `http://localhost:5000/api/projects/${projectId}/tasks/${task._id}/update`;
-      console.log('📡 API URL:', apiUrl);
-
       const response = await fetch(apiUrl, {
         method: 'POST', // Your backend uses POST for this endpoint
         headers: {
@@ -343,7 +347,6 @@ const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
       });
 
       console.log('📡 Response status:', response.status);
-      console.log('📡 Response ok:', response.ok);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -382,7 +385,7 @@ const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
       <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Update Task Status</h2>
+          <h2 className="text-xl font-bold text-gray-900">Update Task Progress</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -398,10 +401,19 @@ const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
           {task.projectName && (
             <p className="text-sm text-gray-600">Project: {task.projectName}</p>
           )}
-          <p className="text-xs text-gray-500">Task ID: {task._id}</p>
-          <p className="text-xs text-gray-500">Current Status: {task.status}</p>
+          <p className="text-xs text-gray-500">Current Status: {task.status || 'Not Started'}</p>
           <p className="text-xs text-gray-500">Current Progress: {task.progress || 0}%</p>
         </div>
+
+        {/* Debug Info (only show in development) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mb-4 p-2 bg-yellow-50 rounded text-xs">
+            <strong>Debug Info:</strong><br/>
+            Task ID: {task._id}<br/>
+            Project ID: {task.projectId || getProjectIdFromUrl() || 'Not found'}<br/>
+            URL: {`/api/projects/${task.projectId || getProjectIdFromUrl()}/tasks/${task._id}/update`}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -428,6 +440,7 @@ const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
           {/* Progress */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Percent className="h-4 w-4 inline mr-1" />
               Progress (%)
             </label>
             <div className="flex items-center space-x-2">
@@ -460,6 +473,7 @@ const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
           {/* Hours Worked */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Clock className="h-4 w-4 inline mr-1" />
               Hours Worked (Today)
             </label>
             <input
@@ -478,6 +492,7 @@ const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
           {/* Remarks */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              <MessageSquare className="h-4 w-4 inline mr-1" />
               Remarks / Comments
             </label>
             <textarea
@@ -494,6 +509,7 @@ const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
           {/* File Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Upload className="h-4 w-4 inline mr-1" />
               Upload Files (Optional)
             </label>
             <input
@@ -524,17 +540,6 @@ const TaskUpdateModal = ({ task, onClose, onSuccess }) => {
               style={{ width: `${formData.progress}%` }}
             />
           </div>
-
-          {/* Debug Info (only in development) */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="p-2 bg-yellow-50 rounded text-xs">
-              <strong>Debug Info:</strong><br/>
-              Task ID: {task._id}<br/>
-              Project ID: {task.projectId || getProjectIdFromUrl() || 'Not found'}<br/>
-              Current Status: {task.status}<br/>
-              URL Path: {window.location.pathname}
-            </div>
-          )}
 
           {/* Buttons */}
           <div className="flex gap-3 pt-4">

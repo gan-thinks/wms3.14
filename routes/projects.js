@@ -322,19 +322,141 @@ router.put('/:id/tasks/:taskId', auth, upload.array('files', 5), multerErrorHand
     }
 });
 
-// ✅ FIXED: Update task progress with optional file upload
+// ✅ REPLACE THE EXISTING UPDATE PROGRESS ROUTE IN YOUR routes/projects.js WITH THIS ONE
+
+// ✅ FIXED: Update task progress with optional file upload - ADD BETTER ERROR HANDLING
 router.post('/:id/tasks/:taskId/update', auth, upload.array('files', 5), multerErrorHandler, async (req, res) => {
     try {
         const { id, taskId } = req.params;
         
+        console.log('🔄 Task update request received:', {
+            projectId: id,
+            taskId: taskId,
+            body: req.body,
+            files: req.files?.length || 0
+        });
+
         if (!isValidObjectId(id) || !isValidObjectId(taskId)) {
+            console.error('❌ Invalid ID format:', { id, taskId });
             return res.status(400).json({ error: 'Invalid ID format' });
         }
 
         const { status, progress, remarks, hoursWorked } = req.body;
         const files = req.files || [];
 
-        console.log('🔄 Updating task progress:', taskId);
+        console.log('📝 Update data:', { status, progress, remarks, hoursWorked, filesCount: files.length });
+
+        const project = await Project.findById(id);
+        if (!project) {
+            console.error('❌ Project not found:', id);
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        const task = project.tasks.id(taskId);
+        if (!task) {
+            console.error('❌ Task not found in project:', { projectId: id, taskId });
+            return res.status(404).json({ error: 'Task not found' });
+        }
+
+        console.log('📋 Current task status:', {
+            currentStatus: task.status,
+            currentProgress: task.progress,
+            newStatus: status,
+            newProgress: progress
+        });
+
+        // Update progress fields
+        if (status !== undefined && status.trim()) {
+            task.status = status.trim();
+        }
+        
+        if (progress !== undefined) {
+            const progressNum = parseInt(progress);
+            if (!isNaN(progressNum)) {
+                task.progress = Math.min(Math.max(progressNum, 0), 100);
+            }
+        }
+        
+        if (remarks && remarks.trim()) {
+            task.remarks = remarks.trim();
+        }
+        
+        if (hoursWorked !== undefined) {
+            const hoursNum = parseFloat(hoursWorked);
+            if (!isNaN(hoursNum) && hoursNum > 0) {
+                task.hoursWorked = (task.hoursWorked || 0) + hoursNum;
+            }
+        }
+
+        // Add progress files (if any)
+        if (files.length > 0) {
+            console.log('📎 Adding files:', files.map(f => f.originalname));
+            
+            const progressFiles = files.map(file => ({
+                name: file.originalname,
+                url: `/uploads/${file.filename}`,
+                size: file.size,
+                type: 'progress',
+                uploadedAt: new Date()
+            }));
+            
+            if (!task.files) task.files = [];
+            task.files = task.files.concat(progressFiles);
+        }
+
+        task.lastUpdated = new Date();
+        
+        // Save the project
+        await project.save();
+
+        console.log('✅ Task progress updated successfully:', {
+            taskId,
+            newStatus: task.status,
+            newProgress: task.progress,
+            filesAdded: files.length
+        });
+
+        // Return the updated task
+        res.json({ 
+            success: true, 
+            message: 'Task updated successfully',
+            task: {
+                _id: task._id,
+                title: task.title,
+                status: task.status,
+                progress: task.progress,
+                remarks: task.remarks,
+                hoursWorked: task.hoursWorked,
+                lastUpdated: task.lastUpdated,
+                files: task.files
+            }
+        });
+    } catch (err) {
+        console.error('❌ Update task progress error:', err);
+        res.status(500).json({ 
+            error: 'Failed to update task progress: ' + err.message,
+            details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        });
+    }
+});
+
+// ✅ ADD THIS NEW ROUTE AS A FALLBACK (Add this AFTER the above route)
+router.put('/:id/tasks/:taskId/update', auth, upload.array('files', 5), multerErrorHandler, async (req, res) => {
+    // Same logic as POST but with PUT method
+    try {
+        const { id, taskId } = req.params;
+        
+        console.log('🔄 Task update (PUT) request received:', {
+            projectId: id,
+            taskId: taskId
+        });
+
+        if (!isValidObjectId(id) || !isValidObjectId(taskId)) {
+            return res.status(400).json({ error: 'Invalid ID format' });
+        }
+
+        const { status, progress, remarks, hoursWorked } = req.body;
+        const files = req.files || [];
 
         const project = await Project.findById(id);
         if (!project) {
@@ -346,15 +468,22 @@ router.post('/:id/tasks/:taskId/update', auth, upload.array('files', 5), multerE
             return res.status(404).json({ error: 'Task not found' });
         }
 
-        // Update progress fields
-        if (status !== undefined) task.status = status;
-        if (progress !== undefined) task.progress = Math.min(Math.max(parseInt(progress) || 0, 0), 100);
+        // Update logic (same as POST)
+        if (status !== undefined && status.trim()) task.status = status.trim();
+        if (progress !== undefined) {
+            const progressNum = parseInt(progress);
+            if (!isNaN(progressNum)) {
+                task.progress = Math.min(Math.max(progressNum, 0), 100);
+            }
+        }
         if (remarks && remarks.trim()) task.remarks = remarks.trim();
         if (hoursWorked !== undefined) {
-            task.hoursWorked = (task.hoursWorked || 0) + (parseFloat(hoursWorked) || 0);
+            const hoursNum = parseFloat(hoursWorked);
+            if (!isNaN(hoursNum) && hoursNum > 0) {
+                task.hoursWorked = (task.hoursWorked || 0) + hoursNum;
+            }
         }
 
-        // Add progress files (if any)
         if (files.length > 0) {
             const progressFiles = files.map(file => ({
                 name: file.originalname,
@@ -371,14 +500,49 @@ router.post('/:id/tasks/:taskId/update', auth, upload.array('files', 5), multerE
         task.lastUpdated = new Date();
         await project.save();
 
-        console.log('✅ Task progress updated successfully');
-        res.json({ success: true, task });
+        console.log('✅ Task progress updated successfully (PUT)');
+        res.json({ 
+            success: true, 
+            message: 'Task updated successfully',
+            task: {
+                _id: task._id,
+                title: task.title,
+                status: task.status,
+                progress: task.progress,
+                remarks: task.remarks,
+                hoursWorked: task.hoursWorked,
+                lastUpdated: task.lastUpdated,
+                files: task.files
+            }
+        });
     } catch (err) {
-        console.error('❌ Update task progress error:', err);
-        res.status(500).json({ error: 'Failed to update task progress' });
+        console.error('❌ Update task progress error (PUT):', err);
+        res.status(500).json({ 
+            error: 'Failed to update task progress: ' + err.message
+        });
     }
 });
 
+// ✅ ADD BETTER ERROR HANDLING - ADD THIS NEAR THE TOP OF YOUR FILE
+const handleAsyncRoute = (fn) => (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+// ✅ ADD BETTER 404 HANDLER - ADD THIS AT THE END OF YOUR routes/projects.js FILE
+router.use('*', (req, res) => {
+    console.log('❌ Route not found:', req.method, req.originalUrl);
+    res.status(404).json({ 
+        error: 'Route not found', 
+        method: req.method,
+        path: req.originalUrl,
+        availableRoutes: [
+            'GET /api/projects',
+            'GET /api/projects/:id',
+            'POST /api/projects/:id/tasks/:taskId/update',
+            'PUT /api/projects/:id/tasks/:taskId/update'
+        ]
+    });
+});
 // Delete task
 router.delete('/:id/tasks/:taskId', auth, async (req, res) => {
     try {
