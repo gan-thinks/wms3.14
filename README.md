@@ -263,13 +263,6 @@ Before running this application, make sure you have the following installed:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For support, email support@workforce-ms.com or create an issue in the repository.
 
 ## Roadmap
 
