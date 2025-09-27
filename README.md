@@ -2,6 +2,7 @@
 
 A comprehensive workforce management system built with Node.js, Express, MongoDB, and React. This system provides complete HR management capabilities including employee management, attendance tracking, leave management, payroll processing, and detailed reporting.
 
+
 ## Features
 
 ### 🏢 Employee Management
