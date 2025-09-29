@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -8,12 +7,15 @@ const { auth } = require('../middleware/auth');
 const Project = require('../models/Project');
 const Notification = require('../models/Notification');
 const Employee = require('../models/Employee');
+const emailService = require('../utils/emailService'); // ✅ ADD THIS LINE
 const mongoose = require('mongoose');
+
 // File upload configuration
 const uploadDir = path.join(__dirname, '..', 'uploads');
 // Ensure uploads directory exists
 if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true }); }
+    fs.mkdirSync(uploadDir, { recursive: true }); 
+}
 
 // Multer storage configuration
 const storage = multer.diskStorage({
@@ -70,7 +72,7 @@ const isValidObjectId = function (id) {
     return mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === id;
 };
 
-// ✅ ADDED: Create a new project
+// ✅ UPDATED: Create a new project with email notifications
 router.post('/', auth, async (req, res) => {
     try {
         const { name, description, tasks, members } = req.body;
@@ -86,7 +88,7 @@ router.post('/', auth, async (req, res) => {
             description: description?.trim() || '',
             createdBy: req.user.id,
             members: members || [req.user.id],
-            status: 'Planning', // ✅ Now valid enum value
+            status: 'Planning',
             tasks: tasks?.map(task => ({
                 title: task.title?.trim(),
                 description: task.description?.trim() || '',
@@ -98,10 +100,33 @@ router.post('/', auth, async (req, res) => {
 
         await project.save();
 
+        // ✅ POPULATE PROJECT WITH MEMBER DETAILS FOR EMAIL
         const populatedProject = await Project.findById(project._id)
             .populate('createdBy', 'firstName lastName email')
             .populate('members', 'firstName lastName email')
             .populate('tasks.assignedTo', 'firstName lastName email');
+
+        // ✅ SEND EMAIL NOTIFICATIONS TO PROJECT MEMBERS
+        if (populatedProject.members && populatedProject.members.length > 1) {
+            try {
+                // Filter out the creator from the email list (they don't need to be notified)
+                const membersToNotify = populatedProject.members.filter(
+                    member => member._id.toString() !== req.user.id.toString()
+                );
+                
+                if (membersToNotify.length > 0) {
+                    await emailService.sendProjectCreationEmail(
+                        membersToNotify,
+                        populatedProject,
+                        populatedProject.createdBy
+                    );
+                    console.log(`✅ Project creation emails sent to ${membersToNotify.length} team members`);
+                }
+            } catch (emailError) {
+                console.error('❌ Failed to send project creation emails:', emailError);
+                // Don't fail the project creation if email fails
+            }
+        }
 
         console.log('✅ Project created successfully:', project.name);
         res.status(201).json({
@@ -196,7 +221,84 @@ router.get('/:id/edit', auth, async (req, res) => {
     }
 });
 
-// ✅ FIXED: Create new task with optional file upload
+// ✅ UPDATED: Add member to project with email notification
+router.put('/:id/members', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { members } = req.body; // Array of member IDs
+        
+        if (!isValidObjectId(id)) {
+            return res.status(400).json({ error: 'Invalid project ID format' });
+        }
+
+        const project = await Project.findById(id)
+            .populate('createdBy', 'firstName lastName email');
+            
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        // Find new members (those not already in the project)
+        const currentMemberIds = project.members.map(m => m.toString());
+        const newMemberIds = members.filter(memberId => 
+            !currentMemberIds.includes(memberId.toString())
+        );
+
+        if (newMemberIds.length > 0) {
+            // Add new members to project
+            project.members = [...project.members, ...newMemberIds];
+            await project.save();
+
+            // ✅ SEND EMAIL NOTIFICATIONS TO NEW MEMBERS
+            try {
+                const newMembers = await Employee.find({ 
+                    _id: { $in: newMemberIds } 
+                }).select('firstName lastName email');
+                
+                const emailPromises = newMembers
+                    .filter(member => member.email)
+                    .map(member => 
+                        emailService.sendProjectMemberAddedEmail(
+                            member,
+                            project,
+                            project.createdBy
+                        ).catch(error => {
+                            console.error(`❌ Failed to send email to ${member.email}:`, error);
+                            return null;
+                        })
+                    );
+
+                await Promise.allSettled(emailPromises);
+                console.log(`✅ Project member addition emails sent to ${newMembers.length} new team members`);
+            } catch (emailError) {
+                console.error('❌ Failed to send project member emails:', emailError);
+            }
+        } else {
+            // Just update members list (might be removing members)
+            project.members = members;
+            await project.save();
+        }
+
+        // Return updated project
+        const updatedProject = await Project.findById(id)
+            .populate('createdBy', 'firstName lastName email')
+            .populate('members', 'firstName lastName email')
+            .populate('tasks.assignedTo', 'firstName lastName email');
+
+        res.json({
+            success: true,
+            message: newMemberIds.length > 0 ? 
+                `${newMemberIds.length} new members added to project` : 
+                'Project members updated',
+            project: updatedProject
+        });
+    } catch (err) {
+        console.error('❌ Update project members error:', err);
+        res.status(500).json({ error: 'Failed to update project members' });
+    }
+});
+
+// ✅ UPDATED: Create new task with email notification
 router.post('/:id/tasks', auth, upload.array('files', 5), multerErrorHandler, async (req, res) => {
     try {
         const { id } = req.params;
@@ -206,17 +308,18 @@ router.post('/:id/tasks', auth, upload.array('files', 5), multerErrorHandler, as
         }
 
         const { title, description, assignedTo, priority, estimatedHours, dueDate } = req.body;
-        const files = req.files || []; // Files are optional
+        const files = req.files || [];
 
         console.log('📝 Creating new task:', { title, assignedTo, priority });
         console.log('📎 Files uploaded:', files.length);
 
-        // Validation - only title is required
         if (!title || !title.trim()) {
             return res.status(400).json({ error: 'Task title is required' });
         }
 
-        const project = await Project.findById(id);
+        const project = await Project.findById(id)
+            .populate('createdBy', 'firstName lastName email');
+        
         if (!project) {
             return res.status(404).json({ error: 'Project not found' });
         }
@@ -243,6 +346,33 @@ router.post('/:id/tasks', auth, upload.array('files', 5), multerErrorHandler, as
         project.tasks.push(newTask);
         await project.save();
 
+        // ✅ SEND EMAIL NOTIFICATION TO ASSIGNED USER
+        if (assignedTo && isValidObjectId(assignedTo)) {
+            try {
+                const assignedUser = await Employee.findById(assignedTo)
+                    .select('firstName lastName email');
+                
+                if (assignedUser && assignedUser.email) {
+                    const createdBy = await Employee.findById(req.user.id)
+                        .select('firstName lastName email');
+                    
+                    const taskForEmail = {
+                        ...newTask,
+                        _id: project.tasks[project.tasks.length - 1]._id
+                    };
+                    
+                    await emailService.sendTaskAssignmentEmail(
+                        assignedUser,
+                        taskForEmail,
+                        createdBy
+                    );
+                    console.log(`✅ Task assignment email sent to ${assignedUser.email}`);
+                }
+            } catch (emailError) {
+                console.error('❌ Failed to send task assignment email:', emailError);
+            }
+        }
+
         // Populate the response
         const populatedProject = await Project.findById(id)
             .populate('tasks.assignedTo', 'firstName lastName email');
@@ -257,7 +387,7 @@ router.post('/:id/tasks', auth, upload.array('files', 5), multerErrorHandler, as
     }
 });
 
-// ✅ FIXED: Update existing task with optional file upload
+// ✅ UPDATED: Update existing task with optional email notification
 router.put('/:id/tasks/:taskId', auth, upload.array('files', 5), multerErrorHandler, async (req, res) => {
     try {
         const { id, taskId } = req.params;
@@ -272,7 +402,9 @@ router.put('/:id/tasks/:taskId', auth, upload.array('files', 5), multerErrorHand
         console.log('📝 Updating task:', taskId);
         console.log('📎 New files:', files.length);
 
-        const project = await Project.findById(id);
+        const project = await Project.findById(id)
+            .populate('tasks.assignedTo', 'firstName lastName email');
+        
         if (!project) {
             return res.status(404).json({ error: 'Project not found' });
         }
@@ -281,6 +413,9 @@ router.put('/:id/tasks/:taskId', auth, upload.array('files', 5), multerErrorHand
         if (!task) {
             return res.status(404).json({ error: 'Task not found' });
         }
+
+        // Store original assignee for email comparison
+        const originalAssignee = task.assignedTo;
 
         // Update task fields
         if (title !== undefined) task.title = title.trim();
@@ -308,6 +443,31 @@ router.put('/:id/tasks/:taskId', auth, upload.array('files', 5), multerErrorHand
         task.updatedAt = new Date();
         await project.save();
 
+        // ✅ SEND EMAIL IF ASSIGNEE CHANGED
+        const newAssigneeId = task.assignedTo?.toString();
+        const oldAssigneeId = originalAssignee?.toString();
+        
+        if (newAssigneeId && newAssigneeId !== oldAssigneeId) {
+            try {
+                const newAssignee = await Employee.findById(newAssigneeId)
+                    .select('firstName lastName email');
+                
+                if (newAssignee && newAssignee.email) {
+                    const updatedBy = await Employee.findById(req.user.id)
+                        .select('firstName lastName email');
+                    
+                    await emailService.sendTaskAssignmentEmail(
+                        newAssignee,
+                        task,
+                        updatedBy
+                    );
+                    console.log(`✅ Task reassignment email sent to ${newAssignee.email}`);
+                }
+            } catch (emailError) {
+                console.error('❌ Failed to send task reassignment email:', emailError);
+            }
+        }
+
         // Return updated task with populated data
         const populatedProject = await Project.findById(id)
             .populate('tasks.assignedTo', 'firstName lastName email');
@@ -322,9 +482,7 @@ router.put('/:id/tasks/:taskId', auth, upload.array('files', 5), multerErrorHand
     }
 });
 
-// ✅ REPLACE THE EXISTING UPDATE PROGRESS ROUTE IN YOUR routes/projects.js WITH THIS ONE
-
-// ✅ FIXED: Update task progress with optional file upload - ADD BETTER ERROR HANDLING
+// Update task progress
 router.post('/:id/tasks/:taskId/update', auth, upload.array('files', 5), multerErrorHandler, async (req, res) => {
     try {
         const { id, taskId } = req.params;
@@ -440,9 +598,8 @@ router.post('/:id/tasks/:taskId/update', auth, upload.array('files', 5), multerE
     }
 });
 
-// ✅ ADD THIS NEW ROUTE AS A FALLBACK (Add this AFTER the above route)
+// PUT version of task update
 router.put('/:id/tasks/:taskId/update', auth, upload.array('files', 5), multerErrorHandler, async (req, res) => {
-    // Same logic as POST but with PUT method
     try {
         const { id, taskId } = req.params;
         
@@ -523,26 +680,6 @@ router.put('/:id/tasks/:taskId/update', auth, upload.array('files', 5), multerEr
     }
 });
 
-// ✅ ADD BETTER ERROR HANDLING - ADD THIS NEAR THE TOP OF YOUR FILE
-const handleAsyncRoute = (fn) => (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-};
-
-// ✅ ADD BETTER 404 HANDLER - ADD THIS AT THE END OF YOUR routes/projects.js FILE
-router.use('*', (req, res) => {
-    console.log('❌ Route not found:', req.method, req.originalUrl);
-    res.status(404).json({ 
-        error: 'Route not found', 
-        method: req.method,
-        path: req.originalUrl,
-        availableRoutes: [
-            'GET /api/projects',
-            'GET /api/projects/:id',
-            'POST /api/projects/:id/tasks/:taskId/update',
-            'PUT /api/projects/:id/tasks/:taskId/update'
-        ]
-    });
-});
 // Delete task
 router.delete('/:id/tasks/:taskId', auth, async (req, res) => {
     try {
@@ -581,6 +718,51 @@ router.delete('/:id/tasks/:taskId', auth, async (req, res) => {
         console.error('❌ Delete task error:', err);
         res.status(500).json({ error: 'Failed to delete task' });
     }
+});
+
+// ✅ ADD TEST EMAIL ROUTE
+router.post('/test-email', auth, async (req, res) => {
+    try {
+        const { email } = req.body;
+        const testEmail = email || 'test@example.com';
+        
+        const result = await emailService.sendEmail(
+            testEmail,
+            'Test Email from WMS',
+            '<h1>Test Email</h1><p>This is a test email from your Workforce Management System.</p><p>Email service is working correctly!</p>'
+        );
+        
+        res.json({
+            success: result.success,
+            message: result.success ? 'Test email sent successfully' : 'Failed to send test email',
+            details: result
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error sending test email',
+            error: error.message
+        });
+    }
+});
+
+// Error handler for routes not found
+router.use('*', (req, res) => {
+    console.log('❌ Route not found:', req.method, req.originalUrl);
+    res.status(404).json({ 
+        error: 'Route not found', 
+        method: req.method,
+        path: req.originalUrl,
+        availableRoutes: [
+            'GET /api/projects',
+            'GET /api/projects/:id',
+            'POST /api/projects',
+            'POST /api/projects/:id/tasks',
+            'POST /api/projects/:id/tasks/:taskId/update',
+            'PUT /api/projects/:id/tasks/:taskId/update',
+            'POST /api/projects/test-email'
+        ]
+    });
 });
 
 module.exports = router;
